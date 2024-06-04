@@ -89,20 +89,29 @@ int main()
 		return 1;
 	}
 
-
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrInstanceProperties.html
 	XrInstanceProperties instance_properties = {};
 	instance_properties.type = XR_TYPE_INSTANCE_PROPERTIES;
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/xrGetInstanceProperties.html
-	// TODO: Error handling.
+	// TODO: Add error handling.
 	xrGetInstanceProperties(instance, &instance_properties);
 	std::cout << "[INFO] Runtime name: " <<	instance_properties.runtimeName << std::endl;
 	std::cout << "[INFO] Runtime version: " << XR_VERSION_MAJOR(instance_properties.runtimeVersion) << "." << XR_VERSION_MINOR(instance_properties.runtimeVersion) << "." << XR_VERSION_PATCH(instance_properties.runtimeVersion) << std::endl;
 
-
-
 	// Get the System ID
+	XrSystemId system_id;
+	XrSystemGetInfo system_info;
+	system_info.type = XR_TYPE_SYSTEM_GET_INFO;
+	system_info.formFactor = XrFormFactor::XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
+	// TODO: Add error handling.
+	xrGetSystem(instance, &system_info, &system_id);
 
+	// Get system properties
+	XrSystemProperties system_properties;
+	system_properties.type = XR_TYPE_SYSTEM_PROPERTIES;;
+	// TODO: Add error handling.
+	xrGetSystemProperties(instance, system_id, &system_properties);
+	std::cout << "[INFO] System name: " << system_properties.systemName << std::endl;
 
 
 
