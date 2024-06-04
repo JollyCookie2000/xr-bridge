@@ -100,18 +100,36 @@ int main()
 
 	// Get the System ID
 	XrSystemId system_id;
-	XrSystemGetInfo system_info;
+	XrSystemGetInfo system_info = {};
 	system_info.type = XR_TYPE_SYSTEM_GET_INFO;
 	system_info.formFactor = XrFormFactor::XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 	// TODO: Add error handling.
 	xrGetSystem(instance, &system_info, &system_id);
 
 	// Get system properties
-	XrSystemProperties system_properties;
+	XrSystemProperties system_properties = {};
 	system_properties.type = XR_TYPE_SYSTEM_PROPERTIES;;
 	// TODO: Add error handling.
 	xrGetSystemProperties(instance, system_id, &system_properties);
 	std::cout << "[INFO] System name: " << system_properties.systemName << std::endl;
+
+	// Create a session
+	XrSessionCreateInfo session_create_info = {};
+	session_create_info.type = XR_TYPE_SESSION_CREATE_INFO;
+	session_create_info.createFlags = NULL;
+	session_create_info.systemId = system_id;
+	XrSession session;
+	XrResult create_session_result = xrCreateSession(instance, &session_create_info, &session);
+	if (create_session_result != XrResult::XR_SUCCESS)
+	{
+		std::cerr << "[ERROR] Failed to create OpenXR session. XrResult = " << create_session_result << "." << std::endl;
+
+		char message[64];
+		xrResultToString(instance, create_session_result, message);
+		std::cerr << message << std::endl;
+
+		return 1;
+	}
 
 
 
@@ -119,6 +137,9 @@ int main()
 
 	
 
+	// // TODO: Add error handling.
+	xrDestroySession(session);
+	
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/xrDestroyInstance.html
 	XrResult destroy_instance_result = xrDestroyInstance(instance);
 	if (destroy_instance_result != XrResult::XR_SUCCESS)
