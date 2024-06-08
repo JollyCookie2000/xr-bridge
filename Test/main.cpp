@@ -6,13 +6,9 @@
 #include <string.h> // std::strncpy
 #include <vector>
 
-#include <Windows.h> // This MUST be included BEFORE GLFW.
+#include <Windows.h> // This MUST be included BEFORE FreeGLUT.
 
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_EXPOSE_NATIVE_WGL
-#define GLFW_NATIVE_INCLUDE_NONE // This will prevent GLFW from including platform-specific headers (like Windows.h).
-#include <GLFW/glfw3native.h>
+#include <GL/freeglut.h>
 
 #include <openxr/openxr.h>
 #define XR_USE_GRAPHICS_API_OPENGL
@@ -22,41 +18,33 @@
 void poll_events(const XrInstance& instance, const XrSession& session);
 void begin_session(const XrInstance& instance, const XrSession& session);
 
-XrSessionState session_state = XrSessionState::XR_SESSION_STATE_UNKNOWN;
+static bool running = true;
+static XrSessionState session_state = XrSessionState::XR_SESSION_STATE_UNKNOWN;
 
 int main(int argc, char** argv)
 {
 	// This is supposed to be done by the user.
-	if (glfwInit() == GLFW_FALSE)
-	{
-		std::cerr << "[ERROR] Failed to initialize GLFW." << std::endl;
-		return 1;
-	}
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 
-	glfwSetErrorCallback([](const int error, const char* message){
-		std::cerr << "[ERROR] GLFW encountered an error: " << message << std::endl;
-		exit(1);
+	glutInitContextVersion(4, 4);
+	glutInitContextProfile(GLUT_CORE_PROFILE);
+	glutInitContextFlags(GLUT_DEBUG);
+
+	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
+	glutInitWindowSize(800, 600);
+	const int window = glutCreateWindow("OpenXR Demo");
+	glutDisplayFunc([]() {});
+	glutCloseFunc([]() {
+		running = false;
 	});
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
-	GLFWwindow* window = glfwCreateWindow(800, 600, "OpenXR Demo", nullptr, nullptr);
-	if (window == NULL)
-	{
-		std::cerr << "[ERROR] Failed to create window." << std::endl;
-		return 1;
-	}
-
-	glfwMakeContextCurrent(window);
 
 
 
 	// TODO: Check that these are not NULL.
-	const HWND hwnd = glfwGetWin32Window(window);
-	const HDC hdc = GetDC(hwnd);
-	const HGLRC hglrc = glfwGetWGLContext(window);
-
-	if (hwnd == NULL || hdc == NULL || hglrc == NULL)
+	const HDC hdc = wglGetCurrentDC();
+	const HGLRC hglrc = wglGetCurrentContext();
+	if (hdc == NULL || hglrc == NULL)
 	{
 		std::cerr << "[ERROR] Failed to get native OpenGL context." << std::endl;
 		return 1;
@@ -217,11 +205,11 @@ int main(int argc, char** argv)
 
 
 	std::cout << std::endl << "Application stuff is happening!!!" << std::endl;
-	while (glfwWindowShouldClose(window) == GLFW_FALSE)
+	while (running)
 	{
 		poll_events(instance, session);
 
-		glfwPollEvents();
+		glutMainLoopEvent();
 	}
 
 	
@@ -242,8 +230,7 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	glfwDestroyWindow(window);
-	glfwTerminate();
+	glutLeaveMainLoop();
 
 	return 0;
 }
