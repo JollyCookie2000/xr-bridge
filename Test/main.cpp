@@ -8,6 +8,7 @@
 
 #include <Windows.h> // This MUST be included BEFORE FreeGLUT.
 
+#include <GL/glew.h>
 #include <GL/freeglut.h>
 
 #include <openxr/openxr.h>
@@ -19,7 +20,9 @@ void poll_events(const XrInstance& instance, const XrSession& session);
 void begin_session(const XrInstance& instance, const XrSession& session);
 
 static bool running = true;
+
 static XrSessionState session_state = XrSessionState::XR_SESSION_STATE_UNKNOWN;
+static XrSystemId system_id = 0;
 
 int main(int argc, char** argv)
 {
@@ -155,7 +158,6 @@ int main(int argc, char** argv)
 	std::cout << "[INFO] Runtime version: " << XR_VERSION_MAJOR(instance_properties.runtimeVersion) << "." << XR_VERSION_MINOR(instance_properties.runtimeVersion) << "." << XR_VERSION_PATCH(instance_properties.runtimeVersion) << std::endl;
 
 	// Get the System ID
-	XrSystemId system_id;
 	XrSystemGetInfo system_info = {};
 	system_info.type = XrStructureType::XR_TYPE_SYSTEM_GET_INFO;
 	system_info.formFactor = XrFormFactor::XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
@@ -348,6 +350,59 @@ void begin_session(const XrInstance& instance, const XrSession& session)
 
 		exit(1);
 	}
+
+
+
+	// Create swapchains (one for each eye)
+	XrSwapchainCreateInfo swapchain_create_info = {};
+	swapchain_create_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_CREATE_INFO;
+	swapchain_create_info.createFlags = NULL;
+	// TODO: Is XR_SWAPCHAIN_USAGE_SAMPLED_BIT actually necessary?
+	// TODO: Apparently, OpenGL ignores these. If so, remove them.
+	swapchain_create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+	// https://steamcommunity.com/app/250820/discussions/8/3121550424355682585/
+	swapchain_create_info.format = GL_SRGB8; // TODO: Improve this.
+	swapchain_create_info.width = 1512; // TODO: Do not make this hard-coded.
+	swapchain_create_info.height = 1680; // TODO: Do not make this hard-coded.
+	swapchain_create_info.sampleCount = 1; // TODO: Do not make this hard-coded.
+	swapchain_create_info.faceCount = 1;
+	swapchain_create_info.arraySize = 1;
+	swapchain_create_info.mipCount = 1;
+
+
+
+	// Debug stuff.
+	// These are the recommended view configurations offered by the runtime.
+	uint32_t count = 0; // This should always be 2.
+	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &count, nullptr);
+	std::vector<XrViewConfigurationView> stuff;
+	stuff.resize(count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
+	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, count, &count, stuff.data());
+	std::cout << "Stuff:" << std::endl;
+	for (const auto& thing : stuff)
+	{
+		std::cout << " - Resolution: " << thing.recommendedImageRectWidth << "x" << thing.recommendedImageRectHeight << "; Sample count: " << thing.recommendedSwapchainSampleCount << std::endl;
+	}
+
+
+
+	XrSwapchain swapchain_left_eye;
+	XrSwapchain swapchain_right_eye;
+	const XrResult create_swapchain = xrCreateSwapchain(session, &swapchain_create_info, &swapchain_left_eye);
+	if (create_swapchain != XrResult::XR_SUCCESS)
+	{
+		std::cerr << "[ERROR] Failed to create swapchain. XrResult = " << create_swapchain << "." << std::endl;
+
+		char message[64];
+		xrResultToString(instance, create_swapchain, message);
+		std::cerr << message << std::endl;
+
+		exit(1);
+	}
+	// If the first one succeeded, the second one also will (probably).
+	xrCreateSwapchain(session, &swapchain_create_info, &swapchain_right_eye);
+
+
 
 	std::cout << "[INFO] OpenXR session has begun." << std::endl;
 }
