@@ -1,3 +1,8 @@
+// TODO: Improve error handling.
+// TODO: Correctly destroy resources at the end.
+// TODO: In the final API, maybe offer a builder to more easily build an instance.
+// TODO: Use a namespace.
+
 #define _CRT_SECURE_NO_WARNINGS // Disable annoying Visual Studio error about strncpy
 
 #include <algorithm>
@@ -18,11 +23,14 @@
 
 void poll_events(const XrInstance& instance, const XrSession& session);
 void begin_session(const XrInstance& instance, const XrSession& session);
+GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image);
 
 static bool running = true;
 
 static XrSessionState session_state = XrSessionState::XR_SESSION_STATE_UNKNOWN;
 static XrSystemId system_id = 0;
+static std::vector<GLuint> left_eye;
+static std::vector<GLuint> right_eye;
 
 int main(int argc, char** argv)
 {
@@ -41,6 +49,11 @@ int main(int argc, char** argv)
 	glutCloseFunc([]() {
 		running = false;
 	});
+
+	if (glewInit() != GLEW_OK)
+	{
+		throw "[ERROR] Failed to initialize GLEW.";
+	}
 
 
 
@@ -388,13 +401,13 @@ void begin_session(const XrInstance& instance, const XrSession& session)
 
 	XrSwapchain swapchain_left_eye;
 	XrSwapchain swapchain_right_eye;
-	const XrResult create_swapchain = xrCreateSwapchain(session, &swapchain_create_info, &swapchain_left_eye);
-	if (create_swapchain != XrResult::XR_SUCCESS)
+	const XrResult create_swapchain_result = xrCreateSwapchain(session, &swapchain_create_info, &swapchain_left_eye);
+	if (create_swapchain_result != XrResult::XR_SUCCESS)
 	{
-		std::cerr << "[ERROR] Failed to create swapchain. XrResult = " << create_swapchain << "." << std::endl;
+		std::cerr << "[ERROR] Failed to create swapchain. XrResult = " << create_swapchain_result << "." << std::endl;
 
 		char message[64];
-		xrResultToString(instance, create_swapchain, message);
+		xrResultToString(instance, create_swapchain_result, message);
 		std::cerr << message << std::endl;
 
 		exit(1);
@@ -402,7 +415,41 @@ void begin_session(const XrInstance& instance, const XrSession& session)
 	// If the first one succeeded, the second one also will (probably).
 	xrCreateSwapchain(session, &swapchain_create_info, &swapchain_right_eye);
 
+	// Left eye
+	uint32_t swapchain_left_image_count = 0;
+	xrEnumerateSwapchainImages(swapchain_left_eye, 0, &swapchain_left_image_count, nullptr);
+	std::vector<XrSwapchainImageOpenGLKHR> images_left_eye;
+	images_left_eye.resize(swapchain_left_image_count, { XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR });
+	xrEnumerateSwapchainImages(swapchain_left_eye, swapchain_left_image_count, &swapchain_left_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images_left_eye.data()));
+	for (const auto& image_left_eye : images_left_eye)
+	{
+		left_eye.push_back(create_fbo(image_left_eye));
+	}
 
+	// Right eye
+	uint32_t swapchain_right_image_count = 0;
+	xrEnumerateSwapchainImages(swapchain_right_eye, 0, &swapchain_right_image_count, nullptr);
+	std::vector<XrSwapchainImageOpenGLKHR> images_right_eye;
+	images_right_eye.resize(swapchain_right_image_count, { XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR });
+	xrEnumerateSwapchainImages(swapchain_right_eye, swapchain_right_image_count, &swapchain_right_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images_right_eye.data()));
+	for (const auto& image_right_eye : images_right_eye)
+	{
+		right_eye.push_back(create_fbo(image_right_eye));
+	}
+
+	// Reference space
+	XrReferenceSpaceCreateInfo reference_space_info = {};
+	reference_space_info.type = XrStructureType::XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
+	reference_space_info.referenceSpaceType = XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_LOCAL;
+	// Here we set the offset to the origin of the tracking space. In this case, we keep the origin were it is.
+	reference_space_info.poseInReferenceSpace = {
+		{ 0.0f, 0.0f, 0.0f, 1.0f, }, // Orientation
+		{ 0.0f, 0.0f, 0.0f }, // Position
+	};
+	// TODO: Add error handling.
+	XrSpace space;
+	xrCreateReferenceSpace(session, &reference_space_info, &space);
+	// TODO: Destroy space.
 
 	std::cout << "[INFO] OpenXR session has begun." << std::endl;
 }
@@ -421,5 +468,31 @@ void end_session(const XrInstance& instance, const XrSession& session)
 		exit(1);
 	}
 
+
+	// TODO: Destroy the swapchains. https://openxr-tutorial.com//android/vulkan/3-graphics.html#destroy-the-swapchain
+	// TODO: Destroy the frambuffers.
+
 	std::cout << "[INFO] OpenXR session has ended." << std::endl;
+}
+
+GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image)
+{
+	// Create the framebuffer
+	GLuint framebuffer_id;
+	glGenFramebuffers(1, &framebuffer_id);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
+
+	// Bind the texture
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, image.image, 0);
+
+
+	if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "[ERROR] Failed to create framebuffer." << std::endl;
+		exit(1);
+	}
+
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	return framebuffer_id;
 }
