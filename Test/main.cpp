@@ -21,16 +21,23 @@
 #define XR_USE_PLATFORM_WIN32
 #include <openxr/openxr_platform.h>
 
-void poll_events(const XrInstance& instance, const XrSession& session);
-void begin_session(const XrInstance& instance, const XrSession& session);
+void poll_events(const XrInstance& instance);
+void begin_session(const XrInstance& instance);
 GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image);
+void render(void);
+void render_layer(const XrTime& display_time);
 
 static bool running = true;
 
+static XrSession session = XR_NULL_HANDLE;
 static XrSessionState session_state = XrSessionState::XR_SESSION_STATE_UNKNOWN;
 static XrSystemId system_id = 0;
-static std::vector<GLuint> left_eye;
-static std::vector<GLuint> right_eye;
+static XrSwapchain swapchain_left_eye = XR_NULL_HANDLE;
+static XrSwapchain swapchain_right_eye = XR_NULL_HANDLE;
+static std::vector<GLuint> left_eye = {};
+static std::vector<GLuint> right_eye = {};
+static XrSpace space = XR_NULL_HANDLE;
+std::vector<XrViewConfigurationView> view_configuration_views = {};
 
 int main(int argc, char** argv)
 {
@@ -204,7 +211,6 @@ int main(int argc, char** argv)
 	session_create_info.next = &binding_opengl;
 	session_create_info.createFlags = NULL;
 	session_create_info.systemId = system_id;
-	XrSession session = XR_NULL_HANDLE;
 	const XrResult create_session_result = xrCreateSession(instance, &session_create_info, &session);
 	if (create_session_result != XrResult::XR_SUCCESS)
 	{
@@ -222,7 +228,7 @@ int main(int argc, char** argv)
 	std::cout << std::endl << "Application stuff is happening!!!" << std::endl;
 	while (running)
 	{
-		poll_events(instance, session);
+		poll_events(instance);
 
 		glutMainLoopEvent();
 	}
@@ -252,7 +258,7 @@ int main(int argc, char** argv)
 
 // Process all the events since the last frame. There could be multiple events per frame.
 // TODO: There's more tuff in the tutorial that I'm ignoring, like session state handling and events. Maybe come back to it later.
-void poll_events(const XrInstance& instance, const XrSession& session)
+void poll_events(const XrInstance& instance)
 {
 	while (true)
 	{
@@ -316,7 +322,7 @@ void poll_events(const XrInstance& instance, const XrSession& session)
 					case XrSessionState::XR_SESSION_STATE_READY:
 						std::cout << "[INFO] Session state changed to READY." << std::endl;
 						// The session is now ready, start doing VR stuff.
-						begin_session(instance, session);
+						begin_session(instance);
 						break;
 					case XrSessionState::XR_SESSION_STATE_STOPPING:
 						std::cout << "[INFO] Session state changed to STOPPING." << std::endl;
@@ -346,7 +352,7 @@ void poll_events(const XrInstance& instance, const XrSession& session)
 	}
 }
 
-void begin_session(const XrInstance& instance, const XrSession& session)
+void begin_session(const XrInstance& instance)
 {
 	XrSessionBeginInfo session_begin_info = {};
 	session_begin_info.type = XrStructureType::XR_TYPE_SESSION_BEGIN_INFO;
@@ -384,23 +390,19 @@ void begin_session(const XrInstance& instance, const XrSession& session)
 
 
 
-	// Debug stuff.
 	// These are the recommended view configurations offered by the runtime.
-	uint32_t count = 0; // This should always be 2.
-	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &count, nullptr);
-	std::vector<XrViewConfigurationView> stuff;
-	stuff.resize(count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
-	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, count, &count, stuff.data());
+	uint32_t view_count = 0; // This should always be 2.
+	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &view_count, nullptr);
+	view_configuration_views.resize(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
+	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, view_count, &view_count, view_configuration_views.data());
 	std::cout << "Stuff:" << std::endl;
-	for (const auto& thing : stuff)
+	for (const auto& thing : view_configuration_views)
 	{
 		std::cout << " - Resolution: " << thing.recommendedImageRectWidth << "x" << thing.recommendedImageRectHeight << "; Sample count: " << thing.recommendedSwapchainSampleCount << std::endl;
 	}
 
 
 
-	XrSwapchain swapchain_left_eye;
-	XrSwapchain swapchain_right_eye;
 	const XrResult create_swapchain_result = xrCreateSwapchain(session, &swapchain_create_info, &swapchain_left_eye);
 	if (create_swapchain_result != XrResult::XR_SUCCESS)
 	{
@@ -447,14 +449,13 @@ void begin_session(const XrInstance& instance, const XrSession& session)
 		{ 0.0f, 0.0f, 0.0f }, // Position
 	};
 	// TODO: Add error handling.
-	XrSpace space;
 	xrCreateReferenceSpace(session, &reference_space_info, &space);
 	// TODO: Destroy space.
 
 	std::cout << "[INFO] OpenXR session has begun." << std::endl;
 }
 
-void end_session(const XrInstance& instance, const XrSession& session)
+void end_session(const XrInstance& instance)
 {
 	const XrResult session_end_result = xrEndSession(session);
 	if (session_end_result != XrResult::XR_SUCCESS)
@@ -495,4 +496,105 @@ GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	return framebuffer_id;
+}
+
+void render()
+{
+	// 3D content
+	/*XrCompositionLayerProjection composition_layer_projection = {};
+	composition_layer_projection.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION;
+	composition_layer_projection.layerFlags = NULL;
+	composition_layer_projection.space = space;
+	composition_layer_projection.viewCount = static_cast<uint32_t>(view_configuration_views.size());
+	composition_layer_projection.views = nullptr; // TODO*/
+	
+	XrFrameState frame_state = {};
+	frame_state.type = XrStructureType::XR_TYPE_FRAME_STATE;
+	XrFrameWaitInfo frame_wait_info = {};
+	frame_wait_info.type = XrStructureType::XR_TYPE_FRAME_WAIT_INFO;
+	// Wait for synchronization with the headset display.
+	xrWaitFrame(session, &frame_wait_info, &frame_state);
+
+	XrFrameBeginInfo frame_begin_info = {};
+	frame_begin_info.type = XrStructureType::XR_TYPE_FRAME_BEGIN_INFO;
+	xrBeginFrame(session, &frame_begin_info);
+
+
+	// Now we can FINALLY render.
+
+	const bool is_session_active =
+		session_state == XrSessionState::XR_SESSION_STATE_SYNCHRONIZED ||
+		session_state == XrSessionState::XR_SESSION_STATE_VISIBLE ||
+		session_state == XrSessionState::XR_SESSION_STATE_FOCUSED;
+
+	bool rendered = false;
+
+	XrCompositionLayerProjection composition_layer_projection = {};
+	composition_layer_projection.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION;
+
+	if (is_session_active && frame_state.shouldRender)
+	{
+		std::cout << "Rendering a frame ..." << std::endl;
+
+		render_layer(frame_state.predictedDisplayTime);
+	}
+	else
+	{
+		std::cout << "NOT rendering a frame ..." << std::endl;
+	}
+
+
+	// This is some ugly stuff.
+	std::vector<XrCompositionLayerBaseHeader*> layers = {};
+	if (rendered)
+	{
+		layers.push_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&composition_layer_projection));
+	}
+
+	XrFrameEndInfo frame_end_info = {};
+	frame_end_info.type = XrStructureType::XR_TYPE_FRAME_END_INFO;
+	frame_end_info.displayTime = frame_state.predictedDisplayTime;
+	frame_end_info.environmentBlendMode = XrEnvironmentBlendMode::XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+	frame_end_info.layerCount = static_cast<uint32_t>(layers.size());
+	frame_end_info.layers = layers.data();
+	xrEndFrame(session, &frame_end_info);
+}
+
+void render_layer(const XrTime& display_time)
+{
+	std::vector<XrView> views (view_configuration_views.size(), { XrStructureType::XR_TYPE_VIEW });
+
+	XrViewState view_state = {};
+	view_state.type = XrStructureType::XR_TYPE_VIEW_STATE;
+	XrViewLocateInfo view_locate_info = {};
+	view_locate_info.type = XrStructureType::XR_TYPE_VIEW_LOCATE_INFO;
+	view_locate_info.viewConfigurationType = XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
+	view_locate_info.displayTime = display_time;
+	view_locate_info.space = space;
+	uint32_t view_count;
+	xrLocateViews(session, &view_locate_info, &view_state, static_cast<uint32_t>(views.size()), &view_count, views.data());
+
+	std::vector<XrCompositionLayerProjectionView> layer_projection_views (view_count, { XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW });
+	
+	// This is the number of eyes. For the moment, I have hardcoded two.
+	// TODO: Make this non-hard-coded.
+	/*for (uint32_t view_index = 0; view_index < view_count; ++view_index)
+	{
+		
+	}*/
+
+	// Left eye
+	uint32_t left_image_index = 0;
+	XrSwapchainImageAcquireInfo left_swapchain_image_acquire_info = {};
+	left_swapchain_image_acquire_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
+	xrAcquireSwapchainImage(swapchain_left_eye, &left_swapchain_image_acquire_info, &left_image_index);
+
+	XrSwapchainImageWaitInfo left_swapchain_image_wait_info = {};
+	left_swapchain_image_wait_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
+	left_swapchain_image_wait_info.timeout = XR_INFINITE_DURATION;
+	xrWaitSwapchainImage(swapchain_left_eye, &left_swapchain_image_wait_info);
+
+	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L1019
+	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L832
+	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L766
 }
