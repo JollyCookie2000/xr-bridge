@@ -536,6 +536,7 @@ void render()
 	{
 		std::cout << "Rendering a frame ..." << std::endl;
 
+		// TODO: Set composition_layer_projection.views equals to the vector returned by render_layer.
 		render_layer(frame_state.predictedDisplayTime);
 	}
 	else
@@ -576,12 +577,14 @@ void render_layer(const XrTime& display_time)
 
 	std::vector<XrCompositionLayerProjectionView> layer_projection_views (view_count, { XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW });
 	
-	// This is the number of eyes. For the moment, I have hardcoded two.
+	// This is the number of eyes. For the moment, I have hard-coded two.
 	// TODO: Make this non-hard-coded.
 	/*for (uint32_t view_index = 0; view_index < view_count; ++view_index)
 	{
 		
 	}*/
+
+
 
 	// Left eye
 	uint32_t left_image_index = 0;
@@ -594,7 +597,60 @@ void render_layer(const XrTime& display_time)
 	left_swapchain_image_wait_info.timeout = XR_INFINITE_DURATION;
 	xrWaitSwapchainImage(swapchain_left_eye, &left_swapchain_image_wait_info);
 
-	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L1019
-	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L832
+	XrCompositionLayerProjectionView left_composition_layer_projection_view = {};
+	left_composition_layer_projection_view.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+	left_composition_layer_projection_view.pose = views.at(0).pose;
+	left_composition_layer_projection_view.fov = views.at(0).fov;
+	left_composition_layer_projection_view.subImage.swapchain = swapchain_left_eye;
+	left_composition_layer_projection_view.subImage.imageRect.offset.x = 0;
+	left_composition_layer_projection_view.subImage.imageRect.offset.y = 0;
+	left_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(view_configuration_views.at(0).recommendedImageRectWidth);
+	left_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(view_configuration_views.at(0).recommendedImageRectHeight);
+	left_composition_layer_projection_view.subImage.imageArrayIndex = 0;
+
+	// Render
+
+	// This struct doesn't even contain anything... WHY DOES IT EXIST?!?
+	XrSwapchainImageReleaseInfo left_swapchain_image_release_info = {};
+	left_swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
+	xrReleaseSwapchainImage(swapchain_left_eye, &left_swapchain_image_release_info);
+
+
+
+	// Right eye
+	uint32_t right_image_index = 0;
+	XrSwapchainImageAcquireInfo right_swapchain_image_acquire_info = {};
+	right_swapchain_image_acquire_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
+	xrAcquireSwapchainImage(swapchain_right_eye, &right_swapchain_image_acquire_info, &right_image_index);
+
+	XrSwapchainImageWaitInfo right_swapchain_image_wait_info = {};
+	right_swapchain_image_wait_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
+	right_swapchain_image_wait_info.timeout = XR_INFINITE_DURATION;
+	xrWaitSwapchainImage(swapchain_right_eye, &right_swapchain_image_wait_info);
+
+	XrCompositionLayerProjectionView right_composition_layer_projection_view = {};
+	right_composition_layer_projection_view.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+	right_composition_layer_projection_view.pose = views.at(1).pose;
+	right_composition_layer_projection_view.fov = views.at(1).fov;
+	right_composition_layer_projection_view.subImage.swapchain = swapchain_right_eye;
+	right_composition_layer_projection_view.subImage.imageRect.offset.x = 0;
+	right_composition_layer_projection_view.subImage.imageRect.offset.y = 0;
+	right_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(view_configuration_views.at(1).recommendedImageRectWidth);
+	right_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(view_configuration_views.at(1).recommendedImageRectHeight);
+	right_composition_layer_projection_view.subImage.imageArrayIndex = 0;
+
+	// Render
+
+	// This struct doesn't even contain anything... WHY DOES IT EXIST?!?
+	XrSwapchainImageReleaseInfo right_swapchain_image_release_info = {};
+	right_swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
+	xrReleaseSwapchainImage(swapchain_right_eye, &right_swapchain_image_release_info);
+
+
+
 	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L766
+	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L889
+	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L1019
+
+	// TODO: Fill layer_projection_views with the two views and return it.
 }
