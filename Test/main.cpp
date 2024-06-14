@@ -3,6 +3,8 @@
 // TODO: In the final API, maybe offer a builder to more easily build an instance.
 // TODO: Use a namespace.
 
+// https://github.com/KhronosGroup/OpenXR-Tutorials/tree/main
+
 #define _CRT_SECURE_NO_WARNINGS // Disable annoying Visual Studio error about strncpy
 
 #include <algorithm>
@@ -25,7 +27,7 @@ void poll_events(const XrInstance& instance);
 void begin_session(const XrInstance& instance);
 GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image);
 void render(void);
-void render_layer(const XrTime& display_time);
+std::vector<XrCompositionLayerProjectionView> render_layers(const XrTime& display_time);
 
 static bool running = true;
 
@@ -229,6 +231,8 @@ int main(int argc, char** argv)
 	while (running)
 	{
 		poll_events(instance);
+
+		render();
 
 		glutMainLoopEvent();
 	}
@@ -500,14 +504,6 @@ GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image)
 
 void render()
 {
-	// 3D content
-	/*XrCompositionLayerProjection composition_layer_projection = {};
-	composition_layer_projection.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION;
-	composition_layer_projection.layerFlags = NULL;
-	composition_layer_projection.space = space;
-	composition_layer_projection.viewCount = static_cast<uint32_t>(view_configuration_views.size());
-	composition_layer_projection.views = nullptr; // TODO*/
-	
 	XrFrameState frame_state = {};
 	frame_state.type = XrStructureType::XR_TYPE_FRAME_STATE;
 	XrFrameWaitInfo frame_wait_info = {};
@@ -529,20 +525,25 @@ void render()
 
 	bool rendered = false;
 
-	XrCompositionLayerProjection composition_layer_projection = {};
-	composition_layer_projection.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION;
-
+	
+	std::vector<XrCompositionLayerProjectionView> composition_layer_projection_views;
 	if (is_session_active && frame_state.shouldRender)
 	{
-		std::cout << "Rendering a frame ..." << std::endl;
-
-		// TODO: Set composition_layer_projection.views equals to the vector returned by render_layer.
-		render_layer(frame_state.predictedDisplayTime);
+		// TODO: Instead of returning the vector (which creates multiple copies), pass the vector as a reference to render_layers.
+		composition_layer_projection_views = render_layers(frame_state.predictedDisplayTime);
 	}
 	else
 	{
 		std::cout << "NOT rendering a frame ..." << std::endl;
 	}
+
+	// 3D content
+	XrCompositionLayerProjection composition_layer_projection = {};
+	composition_layer_projection.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION;
+	composition_layer_projection.layerFlags = NULL;
+	composition_layer_projection.space = space;
+	composition_layer_projection.viewCount = static_cast<uint32_t>(composition_layer_projection_views.size());
+	composition_layer_projection.views = composition_layer_projection_views.data();
 
 
 	// This is some ugly stuff.
@@ -561,7 +562,7 @@ void render()
 	xrEndFrame(session, &frame_end_info);
 }
 
-void render_layer(const XrTime& display_time)
+std::vector<XrCompositionLayerProjectionView> render_layers(const XrTime& display_time)
 {
 	std::vector<XrView> views (view_configuration_views.size(), { XrStructureType::XR_TYPE_VIEW });
 
@@ -607,6 +608,7 @@ void render_layer(const XrTime& display_time)
 	left_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(view_configuration_views.at(0).recommendedImageRectWidth);
 	left_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(view_configuration_views.at(0).recommendedImageRectHeight);
 	left_composition_layer_projection_view.subImage.imageArrayIndex = 0;
+	layer_projection_views.push_back(left_composition_layer_projection_view);
 
 	// Render
 
@@ -638,6 +640,8 @@ void render_layer(const XrTime& display_time)
 	right_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(view_configuration_views.at(1).recommendedImageRectWidth);
 	right_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(view_configuration_views.at(1).recommendedImageRectHeight);
 	right_composition_layer_projection_view.subImage.imageArrayIndex = 0;
+	layer_projection_views.push_back(right_composition_layer_projection_view);
+
 
 	// Render
 
@@ -646,11 +650,5 @@ void render_layer(const XrTime& display_time)
 	right_swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
 	xrReleaseSwapchainImage(swapchain_right_eye, &right_swapchain_image_release_info);
 
-
-
-	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L766
-	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L889
-	// https://github.com/KhronosGroup/OpenXR-Tutorials/blob/main/Chapter3/main.cpp#L1019
-
-	// TODO: Fill layer_projection_views with the two views and return it.
+	return layer_projection_views;
 }
