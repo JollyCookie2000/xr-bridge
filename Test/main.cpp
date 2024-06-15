@@ -23,50 +23,73 @@
 #define XR_USE_PLATFORM_WIN32
 #include <openxr/openxr_platform.h>
 
+#define CRASH_ON_ERROR(x) if (x != XrResult::XR_SUCCESS) { std::cerr << x << std::endl; throw ""; };
+
 void poll_events(const XrInstance& instance);
 void begin_session(const XrInstance& instance);
 GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image);
 void render(void);
-std::vector<XrCompositionLayerProjectionView> render_layers(const XrTime& display_time);
+void render_layers(const XrTime& display_time, std::vector<XrCompositionLayerProjectionView>& composition_layer_projection_views);
+void end_session(const XrInstance & instance);
 
-static bool running = true;
+static bool g_running = true;
 
-static XrSession session = XR_NULL_HANDLE;
-static XrSessionState session_state = XrSessionState::XR_SESSION_STATE_UNKNOWN;
-static XrSystemId system_id = 0;
-static XrSwapchain swapchain_left_eye = XR_NULL_HANDLE;
-static XrSwapchain swapchain_right_eye = XR_NULL_HANDLE;
-static std::vector<GLuint> left_eye = {};
-static std::vector<GLuint> right_eye = {};
-static XrSpace space = XR_NULL_HANDLE;
-std::vector<XrViewConfigurationView> view_configuration_views = {};
+static XrSession g_session = XR_NULL_HANDLE;
+static XrSessionState g_session_state = XrSessionState::XR_SESSION_STATE_UNKNOWN;
+static XrSystemId g_system_id = 0;
+static XrSwapchain g_swapchain_left_eye = XR_NULL_HANDLE;
+static XrSwapchain g_swapchain_right_eye = XR_NULL_HANDLE;
+static std::vector<GLuint> g_left_eye = {};
+static std::vector<GLuint> g_right_eye = {};
+static XrSpace g_space = XR_NULL_HANDLE;
+std::vector<XrViewConfigurationView> g_view_configuration_views = {};
+
+void __stdcall debug_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, GLvoid* userParam)
+{
+	std::cout << "OpenGL says: \"" << std::string(message) << "\"" << std::endl;
+	std::cout << "  - Source: \"" << source << "\"" << std::endl;
+}
+
+XrBool32 openxr_debug(
+	XrDebugUtilsMessageSeverityFlagsEXT              messageSeverity,
+	XrDebugUtilsMessageTypeFlagsEXT                  messageTypes,
+	const XrDebugUtilsMessengerCallbackDataEXT* callbackData,
+	void* userData) {
+	printf("XR DEBUG MESSAGE: %s\n", callbackData->message);
+	return XR_FALSE;
+}
 
 int main(int argc, char** argv)
 {
 	// This is supposed to be done by the user.
-	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-
 	glutInitContextVersion(4, 4);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitContextFlags(GLUT_DEBUG);
+
+	glutInit(&argc, argv);
 
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 	glutInitWindowSize(800, 600);
 	const int window = glutCreateWindow("OpenXR Demo");
 	glutDisplayFunc([]() {});
 	glutCloseFunc([]() {
-		running = false;
+		g_running = false;
 	});
+
+	glutDisplayFunc([] () { });
 
 	if (glewInit() != GLEW_OK)
 	{
 		throw "[ERROR] Failed to initialize GLEW.";
 	}
 
+	glDebugMessageCallback((GLDEBUGPROC) debug_callback, nullptr);
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
 
 
-	// TODO: Check that these are not NULL.
+
 	const HDC hdc = wglGetCurrentDC();
 	const HGLRC hglrc = wglGetCurrentContext();
 	if (hdc == NULL || hglrc == NULL)
@@ -93,10 +116,10 @@ int main(int argc, char** argv)
 
 	// Not sure this is needed
 	uint32_t available_api_layers_count = 0;
-	xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr);
+	CRASH_ON_ERROR(xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr));
 	std::vector<XrApiLayerProperties> available_api_layers;
 	available_api_layers.resize(available_api_layers_count, { XR_TYPE_API_LAYER_PROPERTIES });
-	xrEnumerateApiLayerProperties(available_api_layers_count, &available_api_layers_count, available_api_layers.data());
+	CRASH_ON_ERROR(xrEnumerateApiLayerProperties(available_api_layers_count, &available_api_layers_count, available_api_layers.data()));
 	std::cout << "Available layers:" << std::endl;
 	for (const auto &api_layer : available_api_layers)
 	{
@@ -105,10 +128,10 @@ int main(int argc, char** argv)
 
 	// List available extensions
 	uint32_t available_extensions_count = 0;
-	xrEnumerateInstanceExtensionProperties(nullptr, 0, &available_extensions_count, nullptr);
+	CRASH_ON_ERROR(xrEnumerateInstanceExtensionProperties(nullptr, 0, &available_extensions_count, nullptr));
 	std::vector<XrExtensionProperties> available_extensions;
 	available_extensions.resize(available_extensions_count, { XR_TYPE_EXTENSION_PROPERTIES });
-	xrEnumerateInstanceExtensionProperties(nullptr, available_extensions_count, &available_extensions_count, available_extensions.data());
+	CRASH_ON_ERROR(xrEnumerateInstanceExtensionProperties(nullptr, available_extensions_count, &available_extensions_count, available_extensions.data()));
 	std::cout << "Available extensions:" << std::endl;
 	for (const auto& extension : available_extensions)
 	{
@@ -163,19 +186,22 @@ int main(int argc, char** argv)
 	// Load extension functions.
 	// Apparently the loader does not load extensions, so we have to do it manually.
 	PFN_xrGetOpenGLGraphicsRequirementsKHR xrGetOpenGLGraphicsRequirementsKHR = nullptr;
-	xrGetInstanceProcAddr(instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction*) &xrGetOpenGLGraphicsRequirementsKHR);
+	CRASH_ON_ERROR(xrGetInstanceProcAddr(instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction*) &xrGetOpenGLGraphicsRequirementsKHR));
 	if (xrGetOpenGLGraphicsRequirementsKHR == nullptr)
 	{
 		std::cerr << "[ERROR] Failed to get function pointer to xrGetOpenGLGraphicsRequirementsKHR" << std::endl;
 		return 1;
 	}
 
+	PFN_xrCreateDebugUtilsMessengerEXT xrCreateDebugUtilsMessengerEXT = nullptr;
+	CRASH_ON_ERROR(xrGetInstanceProcAddr(instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction*) &xrCreateDebugUtilsMessengerEXT));
+
+
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrInstanceProperties.html
 	XrInstanceProperties instance_properties = {};
 	instance_properties.type = XrStructureType::XR_TYPE_INSTANCE_PROPERTIES;
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/xrGetInstanceProperties.html
-	// TODO: Add error handling.
-	xrGetInstanceProperties(instance, &instance_properties);
+	CRASH_ON_ERROR(xrGetInstanceProperties(instance, &instance_properties));
 	std::cout << "[INFO] Runtime name: " <<	instance_properties.runtimeName << std::endl;
 	std::cout << "[INFO] Runtime version: " << XR_VERSION_MAJOR(instance_properties.runtimeVersion) << "." << XR_VERSION_MINOR(instance_properties.runtimeVersion) << "." << XR_VERSION_PATCH(instance_properties.runtimeVersion) << std::endl;
 
@@ -183,14 +209,12 @@ int main(int argc, char** argv)
 	XrSystemGetInfo system_info = {};
 	system_info.type = XrStructureType::XR_TYPE_SYSTEM_GET_INFO;
 	system_info.formFactor = XrFormFactor::XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-	// TODO: Add error handling.
-	xrGetSystem(instance, &system_info, &system_id);
+	CRASH_ON_ERROR(xrGetSystem(instance, &system_info, &g_system_id));
 
 	// Get system properties
 	XrSystemProperties system_properties = {};
 	system_properties.type = XrStructureType::XR_TYPE_SYSTEM_PROPERTIES;;
-	// TODO: Add error handling.
-	xrGetSystemProperties(instance, system_id, &system_properties);
+	CRASH_ON_ERROR(xrGetSystemProperties(instance, g_system_id, &system_properties));
 	std::cout << "[INFO] System name: " << system_properties.systemName << std::endl;
 
 	// Create an OpenGL binding (this only works for Win32!)
@@ -202,7 +226,7 @@ int main(int argc, char** argv)
 	// TODO: Verify that the OpenGL version requirement is satisfied.
 	XrGraphicsRequirementsOpenGLKHR opengl_requirements = {};
 	opengl_requirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR;
-	xrGetOpenGLGraphicsRequirementsKHR(instance, system_id, &opengl_requirements);
+	xrGetOpenGLGraphicsRequirementsKHR(instance, g_system_id, &opengl_requirements);
 
 	std::cout << "[INFO] Minimum OpenGL version: " << XR_VERSION_MAJOR(opengl_requirements.minApiVersionSupported) << "." << XR_VERSION_MINOR(opengl_requirements.minApiVersionSupported) << "." << XR_VERSION_PATCH(opengl_requirements.minApiVersionSupported) << std::endl;
 	std::cout << "[INFO] Maximum OpenGL version: " << XR_VERSION_MAJOR(opengl_requirements.maxApiVersionSupported) << "." << XR_VERSION_MINOR(opengl_requirements.maxApiVersionSupported) << "." << XR_VERSION_PATCH(opengl_requirements.maxApiVersionSupported) << std::endl;
@@ -212,8 +236,8 @@ int main(int argc, char** argv)
 	session_create_info.type = XrStructureType::XR_TYPE_SESSION_CREATE_INFO;
 	session_create_info.next = &binding_opengl;
 	session_create_info.createFlags = NULL;
-	session_create_info.systemId = system_id;
-	const XrResult create_session_result = xrCreateSession(instance, &session_create_info, &session);
+	session_create_info.systemId = g_system_id;
+	const XrResult create_session_result = xrCreateSession(instance, &session_create_info, &g_session);
 	if (create_session_result != XrResult::XR_SUCCESS)
 	{
 		std::cerr << "[ERROR] Failed to create OpenXR session. XrResult = " << create_session_result << "." << std::endl;
@@ -225,22 +249,33 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	// Enable debug
+	XrDebugUtilsMessengerCreateInfoEXT debug_info = {};
+	debug_info.type = XrStructureType::XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	xrCreateDebugUtilsMessengerEXT(instance, &debug_info, openxr_debug);
+
 
 
 	std::cout << std::endl << "Application stuff is happening!!!" << std::endl;
-	while (running)
+	while (g_running)
 	{
 		poll_events(instance);
 
-		render();
+		std::cout << g_session_state << std::endl;
+		//if (g_session_state == XrSessionState::XR_SESSION_STATE_READY)
+		{
+			render();
+		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glutSwapBuffers();
 
 		glutMainLoopEvent();
 	}
 
 	
 
-	// TODO: Add error handling.
-	xrDestroySession(session);
+	CRASH_ON_ERROR(xrDestroySession(g_session));
 	
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/xrDestroyInstance.html
 	const XrResult destroy_instance_result = xrDestroyInstance(instance);
@@ -312,14 +347,14 @@ void poll_events(const XrInstance& instance)
 				std::cout << "XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED" << std::endl;
 
 				const XrEventDataSessionStateChanged* new_session_state = reinterpret_cast<XrEventDataSessionStateChanged*>(&event_buffer);
-				if (new_session_state->session != session)
+				if (new_session_state->session != g_session)
 				{
 					// The state has changed for another session, IDK how or why this would happen,
 					// but let's ignore it. That's what the tutorial does anyway.
 					break;
 				}
 
-				session_state = new_session_state->state;
+				g_session_state = new_session_state->state;
 
 				switch (new_session_state->state)
 				{
@@ -341,7 +376,7 @@ void poll_events(const XrInstance& instance)
 						std::cout << "[INFO] Session state changed to EXITING." << std::endl;
 						// The session is ending, stop doing VR stuff.
 						// This is different from stopping. Exiting means that the application is closing.
-						// TODO: End session.
+						end_session(instance);
 						break;
 					default:
 						// Ignore the other states.
@@ -362,7 +397,7 @@ void begin_session(const XrInstance& instance)
 	session_begin_info.type = XrStructureType::XR_TYPE_SESSION_BEGIN_INFO;
 	session_begin_info.primaryViewConfigurationType = XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO; // We have two eyes.
 
-	const XrResult session_begin_result = xrBeginSession(session, &session_begin_info);
+	const XrResult session_begin_result = xrBeginSession(g_session, &session_begin_info);
 	if (session_begin_result != XrResult::XR_SUCCESS)
 	{
 		std::cerr << "[ERROR] Failed to begin session. XrResult = " << session_begin_result << "." << std::endl;
@@ -396,18 +431,18 @@ void begin_session(const XrInstance& instance)
 
 	// These are the recommended view configurations offered by the runtime.
 	uint32_t view_count = 0; // This should always be 2.
-	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &view_count, nullptr);
-	view_configuration_views.resize(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
-	xrEnumerateViewConfigurationViews(instance, system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, view_count, &view_count, view_configuration_views.data());
+	CRASH_ON_ERROR(xrEnumerateViewConfigurationViews(instance, g_system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &view_count, nullptr));
+	g_view_configuration_views.resize(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
+	CRASH_ON_ERROR(xrEnumerateViewConfigurationViews(instance, g_system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, view_count, &view_count, g_view_configuration_views.data()));
 	std::cout << "Stuff:" << std::endl;
-	for (const auto& thing : view_configuration_views)
+	for (const auto& thing : g_view_configuration_views)
 	{
 		std::cout << " - Resolution: " << thing.recommendedImageRectWidth << "x" << thing.recommendedImageRectHeight << "; Sample count: " << thing.recommendedSwapchainSampleCount << std::endl;
 	}
 
 
 
-	const XrResult create_swapchain_result = xrCreateSwapchain(session, &swapchain_create_info, &swapchain_left_eye);
+	const XrResult create_swapchain_result = xrCreateSwapchain(g_session, &swapchain_create_info, &g_swapchain_left_eye);
 	if (create_swapchain_result != XrResult::XR_SUCCESS)
 	{
 		std::cerr << "[ERROR] Failed to create swapchain. XrResult = " << create_swapchain_result << "." << std::endl;
@@ -419,28 +454,28 @@ void begin_session(const XrInstance& instance)
 		exit(1);
 	}
 	// If the first one succeeded, the second one also will (probably).
-	xrCreateSwapchain(session, &swapchain_create_info, &swapchain_right_eye);
+	CRASH_ON_ERROR(xrCreateSwapchain(g_session, &swapchain_create_info, &g_swapchain_right_eye));
 
 	// Left eye
 	uint32_t swapchain_left_image_count = 0;
-	xrEnumerateSwapchainImages(swapchain_left_eye, 0, &swapchain_left_image_count, nullptr);
+	CRASH_ON_ERROR(xrEnumerateSwapchainImages(g_swapchain_left_eye, 0, &swapchain_left_image_count, nullptr));
 	std::vector<XrSwapchainImageOpenGLKHR> images_left_eye;
 	images_left_eye.resize(swapchain_left_image_count, { XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR });
-	xrEnumerateSwapchainImages(swapchain_left_eye, swapchain_left_image_count, &swapchain_left_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images_left_eye.data()));
+	CRASH_ON_ERROR(xrEnumerateSwapchainImages(g_swapchain_left_eye, swapchain_left_image_count, &swapchain_left_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images_left_eye.data())));
 	for (const auto& image_left_eye : images_left_eye)
 	{
-		left_eye.push_back(create_fbo(image_left_eye));
+		g_left_eye.push_back(create_fbo(image_left_eye));
 	}
 
 	// Right eye
 	uint32_t swapchain_right_image_count = 0;
-	xrEnumerateSwapchainImages(swapchain_right_eye, 0, &swapchain_right_image_count, nullptr);
+	CRASH_ON_ERROR(xrEnumerateSwapchainImages(g_swapchain_right_eye, 0, &swapchain_right_image_count, nullptr));
 	std::vector<XrSwapchainImageOpenGLKHR> images_right_eye;
 	images_right_eye.resize(swapchain_right_image_count, { XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR });
-	xrEnumerateSwapchainImages(swapchain_right_eye, swapchain_right_image_count, &swapchain_right_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images_right_eye.data()));
+	CRASH_ON_ERROR(xrEnumerateSwapchainImages(g_swapchain_right_eye, swapchain_right_image_count, &swapchain_right_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(images_right_eye.data())));
 	for (const auto& image_right_eye : images_right_eye)
 	{
-		right_eye.push_back(create_fbo(image_right_eye));
+		g_right_eye.push_back(create_fbo(image_right_eye));
 	}
 
 	// Reference space
@@ -452,8 +487,7 @@ void begin_session(const XrInstance& instance)
 		{ 0.0f, 0.0f, 0.0f, 1.0f, }, // Orientation
 		{ 0.0f, 0.0f, 0.0f }, // Position
 	};
-	// TODO: Add error handling.
-	xrCreateReferenceSpace(session, &reference_space_info, &space);
+	CRASH_ON_ERROR(xrCreateReferenceSpace(g_session, &reference_space_info, &g_space));
 	// TODO: Destroy space.
 
 	std::cout << "[INFO] OpenXR session has begun." << std::endl;
@@ -461,7 +495,7 @@ void begin_session(const XrInstance& instance)
 
 void end_session(const XrInstance& instance)
 {
-	const XrResult session_end_result = xrEndSession(session);
+	const XrResult session_end_result = xrEndSession(g_session);
 	if (session_end_result != XrResult::XR_SUCCESS)
 	{
 		std::cerr << "[ERROR] Failed to end session. XrResult = " << session_end_result << "." << std::endl;
@@ -509,28 +543,26 @@ void render()
 	XrFrameWaitInfo frame_wait_info = {};
 	frame_wait_info.type = XrStructureType::XR_TYPE_FRAME_WAIT_INFO;
 	// Wait for synchronization with the headset display.
-	xrWaitFrame(session, &frame_wait_info, &frame_state);
+	CRASH_ON_ERROR(xrWaitFrame(g_session, &frame_wait_info, &frame_state));
 
 	XrFrameBeginInfo frame_begin_info = {};
 	frame_begin_info.type = XrStructureType::XR_TYPE_FRAME_BEGIN_INFO;
-	xrBeginFrame(session, &frame_begin_info);
-
-
-	// Now we can FINALLY render.
+	std::cout << "xrBeginFrame" << std::endl;
+	CRASH_ON_ERROR(xrBeginFrame(g_session, &frame_begin_info));
 
 	const bool is_session_active =
-		session_state == XrSessionState::XR_SESSION_STATE_SYNCHRONIZED ||
-		session_state == XrSessionState::XR_SESSION_STATE_VISIBLE ||
-		session_state == XrSessionState::XR_SESSION_STATE_FOCUSED;
+		g_session_state == XrSessionState::XR_SESSION_STATE_SYNCHRONIZED ||
+		g_session_state == XrSessionState::XR_SESSION_STATE_VISIBLE ||
+		g_session_state == XrSessionState::XR_SESSION_STATE_FOCUSED;
 
 	bool rendered = false;
-
-	
-	std::vector<XrCompositionLayerProjectionView> composition_layer_projection_views;
+	std::cout << "Rendering?" << std::endl;
+	std::vector<XrCompositionLayerProjectionView> composition_layer_projection_views = {};
 	if (is_session_active && frame_state.shouldRender)
 	{
-		// TODO: Instead of returning the vector (which creates multiple copies), pass the vector as a reference to render_layers.
-		composition_layer_projection_views = render_layers(frame_state.predictedDisplayTime);
+		render_layers(frame_state.predictedDisplayTime, composition_layer_projection_views);
+		rendered = true;
+		std::cout << "Rendering a frame ..." << std::endl;
 	}
 	else
 	{
@@ -541,7 +573,7 @@ void render()
 	XrCompositionLayerProjection composition_layer_projection = {};
 	composition_layer_projection.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION;
 	composition_layer_projection.layerFlags = NULL;
-	composition_layer_projection.space = space;
+	composition_layer_projection.space = g_space;
 	composition_layer_projection.viewCount = static_cast<uint32_t>(composition_layer_projection_views.size());
 	composition_layer_projection.views = composition_layer_projection_views.data();
 
@@ -559,12 +591,13 @@ void render()
 	frame_end_info.environmentBlendMode = XrEnvironmentBlendMode::XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
 	frame_end_info.layerCount = static_cast<uint32_t>(layers.size());
 	frame_end_info.layers = layers.data();
-	xrEndFrame(session, &frame_end_info);
+	std::cout << "xrEndFrame" << std::endl;
+	CRASH_ON_ERROR(xrEndFrame(g_session, &frame_end_info));
 }
 
-std::vector<XrCompositionLayerProjectionView> render_layers(const XrTime& display_time)
+void render_layers(const XrTime& display_time, std::vector<XrCompositionLayerProjectionView>& composition_layer_projection_views)
 {
-	std::vector<XrView> views (view_configuration_views.size(), { XrStructureType::XR_TYPE_VIEW });
+	std::vector<XrView> views (g_view_configuration_views.size(), { XrStructureType::XR_TYPE_VIEW });
 
 	XrViewState view_state = {};
 	view_state.type = XrStructureType::XR_TYPE_VIEW_STATE;
@@ -572,11 +605,11 @@ std::vector<XrCompositionLayerProjectionView> render_layers(const XrTime& displa
 	view_locate_info.type = XrStructureType::XR_TYPE_VIEW_LOCATE_INFO;
 	view_locate_info.viewConfigurationType = XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	view_locate_info.displayTime = display_time;
-	view_locate_info.space = space;
+	view_locate_info.space = g_space;
 	uint32_t view_count;
-	xrLocateViews(session, &view_locate_info, &view_state, static_cast<uint32_t>(views.size()), &view_count, views.data());
+	CRASH_ON_ERROR(xrLocateViews(g_session, &view_locate_info, &view_state, static_cast<uint32_t>(views.size()), &view_count, views.data()));
 
-	std::vector<XrCompositionLayerProjectionView> layer_projection_views (view_count, { XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW });
+	composition_layer_projection_views.resize(view_count, { XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW });
 	
 	// This is the number of eyes. For the moment, I have hard-coded two.
 	// TODO: Make this non-hard-coded.
@@ -591,31 +624,34 @@ std::vector<XrCompositionLayerProjectionView> render_layers(const XrTime& displa
 	uint32_t left_image_index = 0;
 	XrSwapchainImageAcquireInfo left_swapchain_image_acquire_info = {};
 	left_swapchain_image_acquire_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
-	xrAcquireSwapchainImage(swapchain_left_eye, &left_swapchain_image_acquire_info, &left_image_index);
+	CRASH_ON_ERROR(xrAcquireSwapchainImage(g_swapchain_left_eye, &left_swapchain_image_acquire_info, &left_image_index));
 
 	XrSwapchainImageWaitInfo left_swapchain_image_wait_info = {};
 	left_swapchain_image_wait_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
 	left_swapchain_image_wait_info.timeout = XR_INFINITE_DURATION;
-	xrWaitSwapchainImage(swapchain_left_eye, &left_swapchain_image_wait_info);
+	CRASH_ON_ERROR(xrWaitSwapchainImage(g_swapchain_left_eye, &left_swapchain_image_wait_info));
 
 	XrCompositionLayerProjectionView left_composition_layer_projection_view = {};
 	left_composition_layer_projection_view.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
 	left_composition_layer_projection_view.pose = views.at(0).pose;
 	left_composition_layer_projection_view.fov = views.at(0).fov;
-	left_composition_layer_projection_view.subImage.swapchain = swapchain_left_eye;
+	left_composition_layer_projection_view.subImage.swapchain = g_swapchain_left_eye;
 	left_composition_layer_projection_view.subImage.imageRect.offset.x = 0;
 	left_composition_layer_projection_view.subImage.imageRect.offset.y = 0;
-	left_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(view_configuration_views.at(0).recommendedImageRectWidth);
-	left_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(view_configuration_views.at(0).recommendedImageRectHeight);
+	left_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(g_view_configuration_views.at(0).recommendedImageRectWidth);
+	left_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(g_view_configuration_views.at(0).recommendedImageRectHeight);
 	left_composition_layer_projection_view.subImage.imageArrayIndex = 0;
-	layer_projection_views.push_back(left_composition_layer_projection_view);
+	composition_layer_projection_views[0] = left_composition_layer_projection_view;
 
 	// Render
+	glBindFramebuffer(GL_FRAMEBUFFER, g_left_eye.at(left_image_index));
+	glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	// This struct doesn't even contain anything... WHY DOES IT EXIST?!?
 	XrSwapchainImageReleaseInfo left_swapchain_image_release_info = {};
 	left_swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
-	xrReleaseSwapchainImage(swapchain_left_eye, &left_swapchain_image_release_info);
+	CRASH_ON_ERROR(xrReleaseSwapchainImage(g_swapchain_left_eye, &left_swapchain_image_release_info));
 
 
 
@@ -623,32 +659,40 @@ std::vector<XrCompositionLayerProjectionView> render_layers(const XrTime& displa
 	uint32_t right_image_index = 0;
 	XrSwapchainImageAcquireInfo right_swapchain_image_acquire_info = {};
 	right_swapchain_image_acquire_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
-	xrAcquireSwapchainImage(swapchain_right_eye, &right_swapchain_image_acquire_info, &right_image_index);
+	CRASH_ON_ERROR(xrAcquireSwapchainImage(g_swapchain_right_eye, &right_swapchain_image_acquire_info, &right_image_index));
 
 	XrSwapchainImageWaitInfo right_swapchain_image_wait_info = {};
 	right_swapchain_image_wait_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
 	right_swapchain_image_wait_info.timeout = XR_INFINITE_DURATION;
-	xrWaitSwapchainImage(swapchain_right_eye, &right_swapchain_image_wait_info);
+	CRASH_ON_ERROR(xrWaitSwapchainImage(g_swapchain_right_eye, &right_swapchain_image_wait_info));
 
 	XrCompositionLayerProjectionView right_composition_layer_projection_view = {};
 	right_composition_layer_projection_view.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
 	right_composition_layer_projection_view.pose = views.at(1).pose;
 	right_composition_layer_projection_view.fov = views.at(1).fov;
-	right_composition_layer_projection_view.subImage.swapchain = swapchain_right_eye;
+	right_composition_layer_projection_view.subImage.swapchain = g_swapchain_right_eye;
 	right_composition_layer_projection_view.subImage.imageRect.offset.x = 0;
 	right_composition_layer_projection_view.subImage.imageRect.offset.y = 0;
-	right_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(view_configuration_views.at(1).recommendedImageRectWidth);
-	right_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(view_configuration_views.at(1).recommendedImageRectHeight);
+	right_composition_layer_projection_view.subImage.imageRect.extent.width = static_cast<int32_t>(g_view_configuration_views.at(1).recommendedImageRectWidth);
+	right_composition_layer_projection_view.subImage.imageRect.extent.height = static_cast<int32_t>(g_view_configuration_views.at(1).recommendedImageRectHeight);
 	right_composition_layer_projection_view.subImage.imageArrayIndex = 0;
-	layer_projection_views.push_back(right_composition_layer_projection_view);
+	composition_layer_projection_views[1] = right_composition_layer_projection_view;
 
 
 	// Render
+	glBindFramebuffer(GL_FRAMEBUFFER, g_right_eye.at(right_image_index));
+	glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	// This struct doesn't even contain anything... WHY DOES IT EXIST?!?
 	XrSwapchainImageReleaseInfo right_swapchain_image_release_info = {};
 	right_swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
-	xrReleaseSwapchainImage(swapchain_right_eye, &right_swapchain_image_release_info);
+	CRASH_ON_ERROR(xrReleaseSwapchainImage(g_swapchain_right_eye, &right_swapchain_image_release_info));
 
-	return layer_projection_views;
+	/*glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, g_left_eye.at(left_image_index));
+	glBlitFramebuffer(0, 0, 512, 512, 0, 0, 400, 600, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, g_right_eye.at(right_image_index));
+	glBlitFramebuffer(0, 0, 512, 512, 400, 0, 800, 600, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
 }
