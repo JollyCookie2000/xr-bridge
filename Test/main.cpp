@@ -24,6 +24,7 @@
 #include <openxr/openxr_platform.h>
 
 #define CRASH_ON_ERROR(x) if (x != XrResult::XR_SUCCESS) { std::cerr << x << std::endl; throw ""; };
+//#define CRASH_ON_ERROR(x) x
 
 void poll_events(const XrInstance& instance);
 void begin_session(const XrInstance& instance);
@@ -51,8 +52,8 @@ void __stdcall debug_callback(GLenum source, GLenum type, GLuint id, GLenum seve
 }
 
 XrBool32 openxr_debug(
-	XrDebugUtilsMessageSeverityFlagsEXT              messageSeverity,
-	XrDebugUtilsMessageTypeFlagsEXT                  messageTypes,
+	XrDebugUtilsMessageSeverityFlagsEXT        messageSeverity,
+	XrDebugUtilsMessageTypeFlagsEXT            messageTypes,
 	const XrDebugUtilsMessengerCallbackDataEXT* callbackData,
 	void* userData) {
 	printf("XR DEBUG MESSAGE: %s\n", callbackData->message);
@@ -114,7 +115,7 @@ int main(int argc, char** argv)
 	application_info.engineVersion = 0;
 	application_info.apiVersion = XR_API_VERSION_1_0;
 
-	// Not sure this is needed
+	// List available API layers
 	uint32_t available_api_layers_count = 0;
 	CRASH_ON_ERROR(xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr));
 	std::vector<XrApiLayerProperties> available_api_layers;
@@ -124,6 +125,16 @@ int main(int argc, char** argv)
 	for (const auto &api_layer : available_api_layers)
 	{
 		std::cout << " - " << api_layer.layerName << std::endl;
+	}
+
+	// Configure layers
+	std::vector<const char*> layers;
+	//layers.push_back("XR_APILAYER_LUNARG_api_dump");
+	layers.push_back("XR_APILAYER_LUNARG_core_validation");
+	std::cout << "Enabled API layers:" << std::endl;
+	for (const auto& layer : layers)
+	{
+		std::cout << " - " << layer << std::endl;
 	}
 
 	// List available extensions
@@ -140,6 +151,9 @@ int main(int argc, char** argv)
 
 	// Configure extensions
 	std::vector<const char*> extensions;
+	// For some reason, SteamVR throws an error saying that the debug extension is not enabled, even though it is...
+	// Enabling in twice fixes this issue. Somehow.
+	extensions.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	extensions.push_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	extensions.push_back(XR_KHR_OPENGL_ENABLE_EXTENSION_NAME);
 	std::cout << "Enabled extensions:" << std::endl;
@@ -162,14 +176,14 @@ int main(int argc, char** argv)
 	XrInstanceCreateInfo instance_create_info = {};
 	instance_create_info.type = XrStructureType::XR_TYPE_INSTANCE_CREATE_INFO;
 	instance_create_info.createFlags = NULL;
-	instance_create_info.enabledApiLayerCount = 0;
+	instance_create_info.enabledApiLayerCount = static_cast<uint32_t>(layers.size());
+	instance_create_info.enabledApiLayerNames = layers.data();
 	instance_create_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	instance_create_info.enabledExtensionNames = extensions.data();
 	instance_create_info.applicationInfo = application_info;
 
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrInstance.html
 	XrInstance instance = {};
-
 	// https://registry.khronos.org/OpenXR/specs/1.0/man/html/xrCreateInstance.html
 	const XrResult create_instance_result = xrCreateInstance(&instance_create_info, &instance);
 	if (create_instance_result != XrResult::XR_SUCCESS)
@@ -187,11 +201,6 @@ int main(int argc, char** argv)
 	// Apparently the loader does not load extensions, so we have to do it manually.
 	PFN_xrGetOpenGLGraphicsRequirementsKHR xrGetOpenGLGraphicsRequirementsKHR = nullptr;
 	CRASH_ON_ERROR(xrGetInstanceProcAddr(instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction*) &xrGetOpenGLGraphicsRequirementsKHR));
-	if (xrGetOpenGLGraphicsRequirementsKHR == nullptr)
-	{
-		std::cerr << "[ERROR] Failed to get function pointer to xrGetOpenGLGraphicsRequirementsKHR" << std::endl;
-		return 1;
-	}
 
 	PFN_xrCreateDebugUtilsMessengerEXT xrCreateDebugUtilsMessengerEXT = nullptr;
 	CRASH_ON_ERROR(xrGetInstanceProcAddr(instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction*) &xrCreateDebugUtilsMessengerEXT));
@@ -252,7 +261,12 @@ int main(int argc, char** argv)
 	// Enable debug
 	XrDebugUtilsMessengerCreateInfoEXT debug_info = {};
 	debug_info.type = XrStructureType::XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-	xrCreateDebugUtilsMessengerEXT(instance, &debug_info, openxr_debug);
+	debug_info.messageSeverities = XR_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	debug_info.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_CONFORMANCE_BIT_EXT;
+	debug_info.userCallback = openxr_debug;
+	debug_info.userData = nullptr;
+	XrDebugUtilsMessengerEXT debug_messenger;
+	CRASH_ON_ERROR(xrCreateDebugUtilsMessengerEXT(instance, &debug_info, &debug_messenger));
 
 
 
@@ -261,11 +275,7 @@ int main(int argc, char** argv)
 	{
 		poll_events(instance);
 
-		std::cout << g_session_state << std::endl;
-		//if (g_session_state == XrSessionState::XR_SESSION_STATE_READY)
-		{
-			render();
-		}
+		render();
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glutSwapBuffers();
@@ -343,10 +353,10 @@ void poll_events(const XrInstance& instance)
 			// The session state has changed.
 			case XrStructureType::XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
 			{
-				// https://openxr-tutorial.com/windows/opengl/_images/openxr-session-life-cycle.svg
-				std::cout << "XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED" << std::endl;
-
 				const XrEventDataSessionStateChanged* new_session_state = reinterpret_cast<XrEventDataSessionStateChanged*>(&event_buffer);
+				// https://openxr-tutorial.com/windows/opengl/_images/openxr-session-life-cycle.svg
+				std::cout << "XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: " << new_session_state->state << std::endl;
+
 				if (new_session_state->session != g_session)
 				{
 					// The state has changed for another session, IDK how or why this would happen,
@@ -597,7 +607,7 @@ void render()
 
 void render_layers(const XrTime& display_time, std::vector<XrCompositionLayerProjectionView>& composition_layer_projection_views)
 {
-	std::vector<XrView> views (g_view_configuration_views.size(), { XrStructureType::XR_TYPE_VIEW });
+	std::vector<XrView> views(g_view_configuration_views.size(), {XrStructureType::XR_TYPE_VIEW});
 
 	XrViewState view_state = {};
 	view_state.type = XrStructureType::XR_TYPE_VIEW_STATE;
@@ -606,17 +616,17 @@ void render_layers(const XrTime& display_time, std::vector<XrCompositionLayerPro
 	view_locate_info.viewConfigurationType = XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	view_locate_info.displayTime = display_time;
 	view_locate_info.space = g_space;
-	uint32_t view_count;
+	uint32_t view_count = 0;
 	CRASH_ON_ERROR(xrLocateViews(g_session, &view_locate_info, &view_state, static_cast<uint32_t>(views.size()), &view_count, views.data()));
 
 	composition_layer_projection_views.resize(view_count, { XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW });
 	
 	// This is the number of eyes. For the moment, I have hard-coded two.
 	// TODO: Make this non-hard-coded.
-	/*for (uint32_t view_index = 0; view_index < view_count; ++view_index)
+	//for (uint32_t view_index = 0; view_index < view_count; ++view_index)
 	{
 		
-	}*/
+	}
 
 
 
@@ -689,10 +699,10 @@ void render_layers(const XrTime& display_time, std::vector<XrCompositionLayerPro
 	right_swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
 	CRASH_ON_ERROR(xrReleaseSwapchainImage(g_swapchain_right_eye, &right_swapchain_image_release_info));
 
-	/*glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, g_left_eye.at(left_image_index));
 	glBlitFramebuffer(0, 0, 512, 512, 0, 0, 400, 600, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, g_right_eye.at(right_image_index));
 	glBlitFramebuffer(0, 0, 512, 512, 400, 0, 800, 600, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);*/
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
