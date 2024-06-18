@@ -270,7 +270,6 @@ int main(int argc, char** argv)
 
 
 
-	std::cout << std::endl << "Application stuff is happening!!!" << std::endl;
 	while (g_running)
 	{
 		poll_events(instance);
@@ -306,7 +305,7 @@ int main(int argc, char** argv)
 }
 
 // Process all the events since the last frame. There could be multiple events per frame.
-// TODO: There's more tuff in the tutorial that I'm ignoring, like session state handling and events. Maybe come back to it later.
+// TODO: There's more stuff in the tutorial that I'm ignoring, like session state handling and events. Maybe come back to it later.
 void poll_events(const XrInstance& instance)
 {
 	while (true)
@@ -322,7 +321,7 @@ void poll_events(const XrInstance& instance)
 		}
 		else if (poll_event_result == XrResult::XR_SUCCESS)
 		{
-			// More events are availabel, continue.
+			// More events are available, continue.
 		}
 		else
 		{
@@ -429,9 +428,9 @@ void begin_session(const XrInstance& instance)
 	// TODO: Apparently, OpenGL ignores these. If so, remove them.
 	swapchain_create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 	// https://steamcommunity.com/app/250820/discussions/8/3121550424355682585/
-	swapchain_create_info.format = GL_SRGB8; // TODO: Improve this.
-	swapchain_create_info.width = 1512; // TODO: Do not make this hard-coded.
-	swapchain_create_info.height = 1680; // TODO: Do not make this hard-coded.
+	swapchain_create_info.format = GL_RGBA16F; // TODO: Improve this.
+	swapchain_create_info.width = 1540; // TODO: Do not make this hard-coded.
+	swapchain_create_info.height = 1712; // TODO: Do not make this hard-coded.
 	swapchain_create_info.sampleCount = 1; // TODO: Do not make this hard-coded.
 	swapchain_create_info.faceCount = 1;
 	swapchain_create_info.arraySize = 1;
@@ -526,6 +525,10 @@ void end_session(const XrInstance& instance)
 
 GLuint create_fbo(const XrSwapchainImageOpenGLKHR& image)
 {
+	/*GLint format;
+	glGetTextureLevelParameteriv(image.image, 0, GL_TEXTURE_INTERNAL_FORMAT, &format);
+	std::cout << format << std::endl;*/
+
 	// Create the framebuffer
 	GLuint framebuffer_id;
 	glGenFramebuffers(1, &framebuffer_id);
@@ -557,7 +560,6 @@ void render()
 
 	XrFrameBeginInfo frame_begin_info = {};
 	frame_begin_info.type = XrStructureType::XR_TYPE_FRAME_BEGIN_INFO;
-	std::cout << "xrBeginFrame" << std::endl;
 	CRASH_ON_ERROR(xrBeginFrame(g_session, &frame_begin_info));
 
 	const bool is_session_active =
@@ -566,7 +568,6 @@ void render()
 		g_session_state == XrSessionState::XR_SESSION_STATE_FOCUSED;
 
 	bool rendered = false;
-	std::cout << "Rendering?" << std::endl;
 	std::vector<XrCompositionLayerProjectionView> composition_layer_projection_views = {};
 	if (is_session_active && frame_state.shouldRender)
 	{
@@ -601,13 +602,12 @@ void render()
 	frame_end_info.environmentBlendMode = XrEnvironmentBlendMode::XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
 	frame_end_info.layerCount = static_cast<uint32_t>(layers.size());
 	frame_end_info.layers = layers.data();
-	std::cout << "xrEndFrame" << std::endl;
 	CRASH_ON_ERROR(xrEndFrame(g_session, &frame_end_info));
 }
 
 void render_layers(const XrTime& display_time, std::vector<XrCompositionLayerProjectionView>& composition_layer_projection_views)
 {
-	std::vector<XrView> views(g_view_configuration_views.size(), {XrStructureType::XR_TYPE_VIEW});
+	std::vector<XrView> views(g_view_configuration_views.size(), { XrStructureType::XR_TYPE_VIEW });
 
 	XrViewState view_state = {};
 	view_state.type = XrStructureType::XR_TYPE_VIEW_STATE;
@@ -624,9 +624,6 @@ void render_layers(const XrTime& display_time, std::vector<XrCompositionLayerPro
 	// This is the number of eyes. For the moment, I have hard-coded two.
 	// TODO: Make this non-hard-coded.
 	//for (uint32_t view_index = 0; view_index < view_count; ++view_index)
-	{
-		
-	}
 
 
 
