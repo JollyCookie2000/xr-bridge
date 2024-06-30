@@ -23,5 +23,8 @@
     <ClInclude Include="queries.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="xrbridge.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

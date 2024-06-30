@@ -1,7 +1,3 @@
-/*
- * Define a bunch of functions of the type is_extension_supported, is_blend_mode_supported, ...
- */
-
 #include <string>
 #include <vector>
 
@@ -15,10 +11,9 @@ namespace XrBridge
 		uint32_t available_api_layers_count = 0;
 		// TODO: Handle errors.
 		xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr);
-		std::vector<XrApiLayerProperties> available_api_layers = {};
-		available_api_layers.resize(available_api_layers_count, { XR_TYPE_API_LAYER_PROPERTIES });
+		std::vector<XrApiLayerProperties> available_api_layers(available_api_layers_count, { XR_TYPE_API_LAYER_PROPERTIES });
 		// TODO: Handle errors.
-		xrEnumerateApiLayerProperties(available_api_layers_count, &available_api_layers_count, available_api_layers.data()));
+		xrEnumerateApiLayerProperties(available_api_layers_count, &available_api_layers_count, available_api_layers.data());
 
 		return available_api_layers;
 	}
@@ -26,7 +21,7 @@ namespace XrBridge
 	bool is_api_layer_supported(const std::string& api_layer_name)
 	{
 		for (const XrApiLayerProperties& api_layer : get_available_api_layers())
-			if (api_layer.layerName == api_layer_name)
+			if (api_layer_name == api_layer.layerName)
 				return true;
 
 		return false;
@@ -36,20 +31,21 @@ namespace XrBridge
 	{
 		uint32_t available_extensions_count = 0;
 		// TODO: Handle errors.
-		xrEnumerateInstanceExtensionProperties(0, &available_extensions_count, nullptr);
-		std::vector<XrExtensionProperties> available_extensions = {};
-		available_extensions.resize(available_extensions_count, { XR_TYPE_API_LAYER_PROPERTIES });
+		xrEnumerateInstanceExtensionProperties(nullptr, 0, &available_extensions_count, nullptr);
+		std::vector<XrExtensionProperties> available_extensions(available_extensions_count, { XR_TYPE_EXTENSION_PROPERTIES });
 		// TODO: Handle errors.
-		xrEnumerateInstanceExtensionProperties(available_extensions_count, &available_extensions_count, available_extensions.data()));
+		xrEnumerateInstanceExtensionProperties(nullptr, available_extensions_count, &available_extensions_count, available_extensions.data());
 
 		return available_extensions;
 	}
 
-	bool is_extensions_supported(const std::string& extension_name)
+	bool is_extension_supported(const std::string& extension_name)
 	{
 		for (const XrExtensionProperties& extensions : get_available_extensions())
-			if (extensions.extensionName == extension_name)
+		{
+			if (extension_name == extensions.extensionName)
 				return true;
+		}
 
 		return false;
 	}
