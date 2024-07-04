@@ -8,6 +8,7 @@
 
 #include "queries.hpp"
 
+#include <functional>
 #include <iostream>
 #include <string>
 
@@ -18,6 +19,7 @@
 #define XR_USE_PLATFORM_WIN32
 #include <openxr/openxr_platform.h>
 
+// TODO: This should not be accessible from outside.
 static void handle_openxr_errors(const XrInstance instance, const XrResult result)
 {
 	if (result != XrResult::XR_SUCCESS)
@@ -34,6 +36,7 @@ static void handle_openxr_errors(const XrInstance instance, const XrResult resul
 
 namespace XrBridge
 {
+	// TODO: This should not be accessible from outside.
 	struct Swapchain
 	{
 		XrSwapchain swapchain;
@@ -41,6 +44,8 @@ namespace XrBridge
 		uint32_t width;
 		uint32_t height;
 	};
+
+	enum Eye { LEFT, RIGHT };
 
 	class XrBridge
 	{
@@ -51,7 +56,7 @@ namespace XrBridge
 		bool is_ready(void) const;
 
 		void update(void);
-		void render(void (*render_function)()) const;
+		void render(const std::function<void(const Eye eye)> render_function) const;
 	private:
 		void begin_session(void);
 		void end_session(void);
@@ -319,7 +324,7 @@ void XrBridge::XrBridge::update()
 	}
 }
 
-void XrBridge::XrBridge::render(void (*render_function)()) const
+void XrBridge::XrBridge::render(const std::function<void(const Eye eye)> render_function) const
 {
 	XrFrameState frame_state = {};
 	frame_state.type = XrStructureType::XR_TYPE_FRAME_STATE;
@@ -396,9 +401,13 @@ void XrBridge::XrBridge::render(void (*render_function)()) const
 			composition_layer_projection_view.subImage.imageArrayIndex = 0;
 			composition_layer_projection_views.push_back(composition_layer_projection_view);
 
+			// As specified by the OpenXR specification, the left eye has an index of 0 and the right eye an index of 1.
+			// https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrViewConfigurationType.html
+			const Eye eye = view_index == 0 ? Eye::LEFT : Eye::RIGHT;
+
 			// Render
 			glBindFramebuffer(GL_FRAMEBUFFER, current_swapchain.framebuffers.at(image_index));
-			render_function();
+			render_function(eye);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 			XrSwapchainImageReleaseInfo swapchain_image_release_info = {};
@@ -561,31 +570,3 @@ void XrBridge::XrBridge::destroy_fbo(const GLuint id) const
 {
 	glDeleteFramebuffers(0, &id);
 }
-
-/*
-
-void render()
-{
-	// Make sure that we can render. should_render() should return false if the session is currently not running
-	//  or any other reason where we cannot render.
-	if (xr.should_render() == false)
-	{
-		return;
-	}
-	
-	for (uint32_t eye_index = 0; eye_index < 2; ++eye_index)
-	{
-		const XrBridge::Eye eye = eye_index == 0 ? XrBridge::Eye::LEFT : XrBridge::Eye::RIGHT;
-		// Binds the framebuffer relative to the specified eye, sets the viewport.
-		// This means that XrBrighe must also create the depth attachment for the framebuffer!
-		xr.begin_eye(eye);
-
-		// Returns the projection matrix and the view matrix of the specified eye.
-		const glm::mat4 matrix = xr.get_matrix(eye);
-
-		// Submits the rendered framebuffer to OpenXR for rendering.
-		xr.end_eye(eye);
-	}
-}
-
-*/

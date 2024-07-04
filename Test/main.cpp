@@ -61,8 +61,17 @@ int main(int argc, char** argv)
 	{
 		xrbridge.update();
 
-		xrbridge.render([] () {
-			glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+		xrbridge.render([&] (const XrBridge::Eye eye) {
+			switch (eye)
+			{
+				case XrBridge::Eye::LEFT:
+					glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+					break;
+				case XrBridge::Eye::RIGHT:
+					glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+					break;
+			}
+			
 			glClear(GL_COLOR_BUFFER_BIT);
 		});
 
