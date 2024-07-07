@@ -50,7 +50,7 @@ namespace XrBridge
 		bool is_ready(void) const;
 
 		void update(void);
-		void render(const std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function) const;
+		void render(const std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function);
 	private:
 		void begin_session(void);
 		void end_session(void);
@@ -58,6 +58,7 @@ namespace XrBridge
 		void destroy_fbo(const GLuint id) const;
 
 		bool is_ready_flag;
+		bool is_currently_rendering_flag;
 
 		XrInstance instance;
 		XrSystemId system_id;

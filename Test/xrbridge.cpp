@@ -71,6 +71,7 @@ XrBridge::XrBridge::XrBridge(
 	const HGLRC hglrc)
 	:
 	is_ready_flag{ false },
+	is_currently_rendering_flag{ false },
 	instance{ XR_NULL_HANDLE },
 	system_id{ XR_NULL_SYSTEM_ID },
 	session{ XR_NULL_HANDLE },
@@ -222,6 +223,13 @@ void XrBridge::XrBridge::update()
 		return;
 	}
 
+	if (this->is_currently_rendering_flag)
+	{
+		// TODO: Handle errors.
+		std::cerr << "[ERROR] Another method was called inside the rendering method. This is not allowed!" << std::endl;
+		throw "";
+	}
+
 	while (true)
 	{
 		XrEventDataBuffer event_buffer = {};
@@ -306,8 +314,17 @@ void XrBridge::XrBridge::update()
 	}
 }
 
-void XrBridge::XrBridge::render(const std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function) const
+void XrBridge::XrBridge::render(const std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function)
 {
+	if (this->is_currently_rendering_flag)
+	{
+		// TODO: Handle errors.
+		std::cerr << "[ERROR] Another method was called inside the rendering method. This is not allowed!" << std::endl;
+		throw "";
+	}
+
+	this->is_currently_rendering_flag = true;
+
 	XrFrameState frame_state = {};
 	frame_state.type = XrStructureType::XR_TYPE_FRAME_STATE;
 	XrFrameWaitInfo frame_wait_info = {};
@@ -432,6 +449,8 @@ void XrBridge::XrBridge::render(const std::function<void(const Eye eye, const gl
 	frame_end_info.layerCount = static_cast<uint32_t>(layers.size());
 	frame_end_info.layers = layers.data();
 	OXR(xrEndFrame(this->session, &frame_end_info));
+
+	this->is_currently_rendering_flag = false;
 }
 
 void XrBridge::XrBridge::begin_session()
