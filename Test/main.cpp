@@ -2,8 +2,6 @@
 
 // https://github.com/KhronosGroup/OpenXR-Tutorials/tree/main
 
-#define _CRT_SECURE_NO_WARNINGS // Disable annoying Visual Studio error about strncpy
-
 #include <iostream>
 
 #include <Windows.h> // This MUST be included BEFORE FreeGLUT.
@@ -13,6 +11,10 @@
 #include <glm/glm.hpp>
 
 #include "xrbridge.hpp"
+
+#include "cube.hpp"
+
+#define INTEROCULAR_DISTANCE 0.06f // Expressed in METERS
 
 static bool g_running = true;
 
@@ -41,8 +43,7 @@ int main(int argc, char** argv)
 		throw "[ERROR] Failed to initialize GLEW.";
 	}
 
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
+	glEnable(GL_DEPTH_TEST);
 
 	const HDC hdc = wglGetCurrentDC();
 	const HGLRC hglrc = wglGetCurrentContext();
@@ -52,27 +53,26 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	XrBridge::XrBridge xrbridge = XrBridge::XrBridge("XrBridge Demo", {}, { "XR_KHR_opengl_enable", "XR_EXT_debug_utils" }, hdc, hglrc);
+	XrBridge::XrBridge xrbridge = XrBridge::XrBridge("XrBridge Demo", {}, { "XR_KHR_opengl_enable" }, hdc, hglrc);
+
+	const glm::mat4 camera_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.5f));
+	const Cube cube;
 
 	while (g_running)
 	{
 		xrbridge.update();
 
 		xrbridge.render([&] (const XrBridge::Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
-			if (eye == XrBridge::Eye::LEFT)
-			{
-				glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-			}
-			else if (XrBridge::Eye::RIGHT)
-			{
-				glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-			}
+			glClearColor(0.22f, 0.36f, 0.42f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			glClear(GL_COLOR_BUFFER_BIT);
+			const float eye_shift = eye == XrBridge::Eye::LEFT ? INTEROCULAR_DISTANCE / -2.0f : INTEROCULAR_DISTANCE / 2.0f;
+			const glm::mat4 eye_shift_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(eye_shift, 0.0f, 0.0f));
+
+			cube.render(projection_matrix * glm::inverse(eye_shift_matrix) * glm::inverse(view_matrix) * glm::inverse(camera_matrix) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)));
 		});
 
 		glutSwapBuffers();
-
 		glutMainLoopEvent();
 	}
 

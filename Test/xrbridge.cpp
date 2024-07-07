@@ -406,19 +406,14 @@ void XrBridge::XrBridge::render(const std::function<void(const Eye eye, const gl
 			const Eye eye = view_index == 0 ? Eye::LEFT : Eye::RIGHT;
 			const float aspect_ratio = static_cast<float>(current_swapchain.width) / static_cast<float>(current_swapchain.height);
 
-			// TODO: Make the clipping planes user-configurable.
+			// TODO: Make the clipping planes configurable.
 			const glm::mat4 projection_matrix = glm::perspective(current_view.fov.angleUp - current_view.fov.angleDown, aspect_ratio, 0.1f, 100'000.0f);
-			glm::quat quaternion(-current_view.pose.orientation.w, current_view.pose.orientation.x, current_view.pose.orientation.y, current_view.pose.orientation.z);
-			const glm::mat4 view_matrix =
-				glm::mat4_cast(quaternion) *
-				//glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position) * -1000.0f);
-				glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position));
+			glm::quat quaternion(current_view.pose.orientation.w, current_view.pose.orientation.x, current_view.pose.orientation.y, current_view.pose.orientation.z);
+			const glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position)) * glm::mat4_cast(quaternion);
 
 			// Render
 			glBindFramebuffer(GL_FRAMEBUFFER, current_swapchain.framebuffers.at(image_index));
-			glClearColor(1.0f, 0.0f, 1.0f, 1.0f); // TODO: Make this user-configurable.
-			glClearDepth(1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			// TODO: Maybe pass the view size to the user?
 			glViewport(0, 0, current_swapchain.width, current_swapchain.height);
 
 			render_function(eye, projection_matrix, view_matrix);
@@ -515,8 +510,9 @@ void XrBridge::XrBridge::begin_session()
 	reference_space_info.type = XrStructureType::XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
 	// NOTE: The LOCAL reference space refers to the user in the sitting position.
 	//  More info: https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
-	reference_space_info.referenceSpaceType = XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_STAGE;
-	//reference_space_info.referenceSpaceType = XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_LOCAL;
+	// TODO: Make this configurable.
+	//reference_space_info.referenceSpaceType = XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_STAGE;
+	reference_space_info.referenceSpaceType = XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_LOCAL;
 	// Here we set the offset to the origin of the tracking space. In this case, we keep the origin were it is.
 	reference_space_info.poseInReferenceSpace = {
 		{ 0.0f, 0.0f, 0.0f, 1.0f, }, // Orientation

@@ -137,6 +137,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="cube.cpp" />
+    <ClCompile Include="cube.hpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="xrbridge.cpp" />
   </ItemGroup>
