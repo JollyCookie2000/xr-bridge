@@ -18,11 +18,11 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="xrbridge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="queries.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="xrbridge.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>

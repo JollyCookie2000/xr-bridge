@@ -4,16 +4,13 @@
 
 #define _CRT_SECURE_NO_WARNINGS // Disable annoying Visual Studio error about strncpy
 
-#include <algorithm>
 #include <iostream>
-#include <string>
-#include <string.h> // std::strncpy
-#include <vector>
 
 #include <Windows.h> // This MUST be included BEFORE FreeGLUT.
 
 #include <GL/glew.h>
 #include <GL/freeglut.h>
+#include <glm/glm.hpp>
 
 #include "xrbridge.hpp"
 
@@ -61,17 +58,16 @@ int main(int argc, char** argv)
 	{
 		xrbridge.update();
 
-		xrbridge.render([&] (const XrBridge::Eye eye) {
-			switch (eye)
+		xrbridge.render([&] (const XrBridge::Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
+			if (eye == XrBridge::Eye::LEFT)
 			{
-				case XrBridge::Eye::LEFT:
-					glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
-					break;
-				case XrBridge::Eye::RIGHT:
-					glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-					break;
+				glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
 			}
-			
+			else if (XrBridge::Eye::RIGHT)
+			{
+				glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+			}
+
 			glClear(GL_COLOR_BUFFER_BIT);
 		});
 
