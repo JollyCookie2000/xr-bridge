@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 
 	glEnable(GL_DEPTH_TEST);
 
-	XrBridge::XrBridge xrbridge = XrBridge::XrBridge("XrBridge Demo", { "XR_KHR_opengl_enable" });
+	XrBridge::XrBridge xrbridge = XrBridge::XrBridge("XrBridge Demo");
 
 	const glm::mat4 camera_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.5f));
 	const Cube cube;

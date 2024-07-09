@@ -72,10 +72,7 @@ static bool is_extension_supported(const std::string& extension_name)
 	return false;
 }
 
-XrBridge::XrBridge::XrBridge(
-	const std::string& application_name,
-	const std::vector<std::string>& requested_extensions)
-	:
+XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 	is_ready_flag{ false },
 	is_currently_rendering_flag{ false },
 	instance{ XR_NULL_HANDLE },
@@ -116,6 +113,8 @@ XrBridge::XrBridge::XrBridge(
 	}
 
 	// Load extensions
+	// NOTE: Specify here the desired OpenXR extensions.
+	const std::vector<std::string>& requested_extensions = { "XR_KHR_opengl_enable" };
 	std::vector<const char*> active_extensions;
 	for (const std::string& requested_extension : requested_extensions)
 	{
