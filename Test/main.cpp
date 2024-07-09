@@ -14,8 +14,6 @@
 
 #include "cube.hpp"
 
-#define INTEROCULAR_DISTANCE 0.06f // Expressed in METERS
-
 static bool g_running = true;
 
 int main(int argc, char** argv)
@@ -66,10 +64,11 @@ int main(int argc, char** argv)
 			glClearColor(0.22f, 0.36f, 0.42f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			const float eye_shift = eye == XrBridge::Eye::LEFT ? INTEROCULAR_DISTANCE / -2.0f : INTEROCULAR_DISTANCE / 2.0f;
-			const glm::mat4 eye_shift_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(eye_shift, 0.0f, 0.0f));
-
-			cube.render(projection_matrix * glm::inverse(eye_shift_matrix) * glm::inverse(view_matrix) * glm::inverse(camera_matrix) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)));
+			cube.render(
+					projection_matrix *
+					glm::inverse(view_matrix) *
+					glm::inverse(camera_matrix) *
+					glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)));
 		});
 
 		glutSwapBuffers();

@@ -418,12 +418,12 @@ void XrBridge::XrBridge::render(const std::function<void(const Eye eye, const gl
 
 			render_function(eye, projection_matrix, view_matrix);
 
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 			XrSwapchainImageReleaseInfo swapchain_image_release_info = {};
 			swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
 			OXR(xrReleaseSwapchainImage(current_swapchain.swapchain, &swapchain_image_release_info));
 		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		composition_layer_projection.viewCount = static_cast<uint32_t>(composition_layer_projection_views.size());
 		composition_layer_projection.views = composition_layer_projection_views.data();
@@ -568,7 +568,8 @@ GLuint XrBridge::XrBridge::create_fbo(const GLuint color, const GLsizei width, c
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height); // TODO: Allow the user to choose this.
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_id);
 
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
 		// TODO: Handle errors.
 		std::cerr << "[ERROR] Failed to create framebuffer." << std::endl;
 	}
