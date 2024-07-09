@@ -2,7 +2,16 @@
 
 #include <iostream>
 
+#include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
+
 #include <GL/freeglut.h>
+
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#define XR_USE_GRAPHICS_API_OPENGL
+#define XR_USE_PLATFORM_WIN32
+#include <openxr/openxr_platform.h>
 
 #define OXR( function ) handle_openxr_errors( this->instance, function );
 #define XRV_TO_GV( xrv ) glm::vec3(xrv.x, xrv.y, xrv.z)
@@ -66,9 +75,7 @@ static bool is_extension_supported(const std::string& extension_name)
 XrBridge::XrBridge::XrBridge(
 	const std::string& application_name,
 	const std::vector<std::string>& requested_api_layers,
-	const std::vector<std::string>& requested_extensions,
-	const HDC hdc,
-	const HGLRC hglrc)
+	const std::vector<std::string>& requested_extensions)
 	:
 	is_ready_flag{ false },
 	is_currently_rendering_flag{ false },
@@ -171,6 +178,13 @@ XrBridge::XrBridge::XrBridge(
 	OXR(xrGetSystemProperties(this->instance, this->system_id, &system_properties));
 	std::cout << "[INFO] System name: " << system_properties.systemName << std::endl;
 
+	const HDC hdc = wglGetCurrentDC();
+	const HGLRC hglrc = wglGetCurrentContext();
+	if (hdc == NULL || hglrc == NULL)
+	{
+		// TODO: Handle errors.
+		std::cerr << "[ERROR] Failed to get native OpenGL context." << std::endl;
+	}
 
 	// Create the OpenGL binding.
 	// NOTE: Change this to use another graphics API.
@@ -187,7 +201,7 @@ XrBridge::XrBridge::XrBridge(
 	xrGetOpenGLGraphicsRequirementsKHR(this->instance, this->system_id, &graphics_requirements);
 
 
-	// Create an OpenXR ession.
+	// Create an OpenXR session.
 	XrSessionCreateInfo session_create_info = {};
 	session_create_info.type = XrStructureType::XR_TYPE_SESSION_CREATE_INFO;
 	session_create_info.next = &graphics_binding;

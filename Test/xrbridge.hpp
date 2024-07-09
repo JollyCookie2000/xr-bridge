@@ -1,8 +1,5 @@
 #pragma once
 
-// TODO: Allow using macros to choose the error handling method (exceptions vs is_ready()).
-// If a constructor fails, the destructor is not called! Destroy the instance and session in the constructor tehn!
-
 /*
  * For the OpenXR API documentation:
  * 	https://registry.khronos.org/OpenXR/specs/1.1/man/html/FUNCTION_OR_STRUCT.html
@@ -12,20 +9,11 @@
 #include <string>
 #include <vector>
 
-#include <Windows.h>
-
 #include <GL/glew.h>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 #include <openxr/openxr.h>
-#define XR_USE_GRAPHICS_API_OPENGL
-#define XR_USE_PLATFORM_WIN32
-#include <openxr/openxr_platform.h>
 
 namespace XrBridge
 {
@@ -46,7 +34,7 @@ namespace XrBridge
 	class XrBridge
 	{
 	public:
-		XrBridge(const std::string& appication_name, const std::vector<std::string>& requested_api_layers, const std::vector<std::string>& requested_extensions, const HDC hdc, const HGLRC hglrc);
+		XrBridge(const std::string& appication_name, const std::vector<std::string>& requested_api_layers, const std::vector<std::string>& requested_extensions);
 		~XrBridge(void);
 
 		bool is_ready(void) const;

@@ -1,24 +1,17 @@
-// TODO: In the final API, maybe offer a builder to more easily build an instance.
-
-// https://github.com/KhronosGroup/OpenXR-Tutorials/tree/main
-
-#include <iostream>
-
-#include <Windows.h> // This MUST be included BEFORE FreeGLUT.
-
 #include <GL/glew.h>
 #include <GL/freeglut.h>
-#include <glm/glm.hpp>
 
-#include "xrbridge.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "cube.hpp"
+
+#include "xrbridge.hpp"
 
 static bool g_running = true;
 
 int main(int argc, char** argv)
 {
-	// This is supposed to be done by the user.
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 	glutInitContextVersion(4, 4);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
@@ -29,12 +22,10 @@ int main(int argc, char** argv)
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 	glutInitWindowSize(800, 600);
 	const int window = glutCreateWindow("OpenXR Demo");
-	glutDisplayFunc([]() {});
-	glutCloseFunc([]() {
+	glutDisplayFunc([] () {});
+	glutCloseFunc([] () {
 		g_running = false;
 	});
-
-	glutDisplayFunc([] () { });
 
 	if (glewInit() != GLEW_OK)
 	{
@@ -43,15 +34,7 @@ int main(int argc, char** argv)
 
 	glEnable(GL_DEPTH_TEST);
 
-	const HDC hdc = wglGetCurrentDC();
-	const HGLRC hglrc = wglGetCurrentContext();
-	if (hdc == NULL || hglrc == NULL)
-	{
-		std::cerr << "[ERROR] Failed to get native OpenGL context." << std::endl;
-		return 1;
-	}
-
-	XrBridge::XrBridge xrbridge = XrBridge::XrBridge("XrBridge Demo", {}, { "XR_KHR_opengl_enable" }, hdc, hglrc);
+	XrBridge::XrBridge xrbridge = XrBridge::XrBridge("XrBridge Demo", {}, { "XR_KHR_opengl_enable" });
 
 	const glm::mat4 camera_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.5f));
 	const Cube cube;
