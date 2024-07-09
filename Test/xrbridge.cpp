@@ -74,7 +74,6 @@ static bool is_extension_supported(const std::string& extension_name)
 
 XrBridge::XrBridge::XrBridge(
 	const std::string& application_name,
-	const std::vector<std::string>& requested_api_layers,
 	const std::vector<std::string>& requested_extensions)
 	:
 	is_ready_flag{ false },
@@ -97,6 +96,8 @@ XrBridge::XrBridge::XrBridge(
 
 
 	// Load API layers
+	// NOTE: Specify here the desired API layers.
+	const std::vector<std::string> requested_api_layers = {};
 	std::vector<const char*> active_api_layers;
 	for (const std::string& requested_api_layer : requested_api_layers)
 	{

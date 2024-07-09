@@ -34,7 +34,7 @@ namespace XrBridge
 	class XrBridge
 	{
 	public:
-		XrBridge(const std::string& appication_name, const std::vector<std::string>& requested_api_layers, const std::vector<std::string>& requested_extensions);
+		XrBridge(const std::string& appication_name, const std::vector<std::string>& requested_extensions);
 		~XrBridge(void);
 
 		bool is_ready(void) const;
