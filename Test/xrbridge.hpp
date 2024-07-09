@@ -41,6 +41,8 @@ namespace XrBridge
 
 	enum Eye { LEFT, RIGHT };
 
+	typedef std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function_t;
+
 	class XrBridge
 	{
 	public:
@@ -50,7 +52,7 @@ namespace XrBridge
 		bool is_ready(void) const;
 
 		void update(void);
-		void render(const std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function);
+		void render(const render_function_t render_function);
 	private:
 		void begin_session(void);
 		void end_session(void);

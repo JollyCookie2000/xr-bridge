@@ -314,7 +314,7 @@ void XrBridge::XrBridge::update()
 	}
 }
 
-void XrBridge::XrBridge::render(const std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function)
+void XrBridge::XrBridge::render(const render_function_t render_function)
 {
 	if (this->is_currently_rendering_flag)
 	{
