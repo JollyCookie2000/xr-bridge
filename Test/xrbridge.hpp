@@ -40,6 +40,10 @@ namespace XrBridge
 	public:
 		XrBridge();
 
+		// Since we are managing resources, we should prevent the user from creating copies of this object!
+		XrBridge(const XrBridge&) = delete;
+		XrBridge& operator=(const XrBridge&) = delete;
+
 		bool init(const std::string& appication_name);
 		bool free(void);
 

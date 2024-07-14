@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 	glEnable(GL_DEPTH_TEST);
 
 	// Create an instance of XrBridge.
-	XrBridge::XrBridge xrbridge = XrBridge::XrBridge();
+	XrBridge::XrBridge xrbridge;
 
 	// Initialize the XrBridge instance.
 	xrbridge.init("XrBridge Demo");
