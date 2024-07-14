@@ -30,8 +30,7 @@ namespace XrBridge
 		uint32_t height;
 	};
 
-	// TODO: Maybe make this an enum class?
-	enum Eye { LEFT, RIGHT };
+	enum class Eye { LEFT, RIGHT };
 
 	// NOTE: Change here the signature of the user-provided render function.
 	typedef std::function<void(const Eye eye, const std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function_t;
