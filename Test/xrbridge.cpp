@@ -72,8 +72,7 @@ static bool is_extension_supported(const std::string& extension_name)
 	return false;
 }
 
-XrBridge::XrBridge::XrBridge(const std::string& application_name) :
-	is_ready_flag{ false },
+XrBridge::XrBridge::XrBridge() :
 	is_currently_rendering_flag{ false },
 	instance{ XR_NULL_HANDLE },
 	system_id{ XR_NULL_SYSTEM_ID },
@@ -81,6 +80,11 @@ XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 	session_state{ XrSessionState::XR_SESSION_STATE_UNKNOWN },
 	swapchains{ },
 	space{ XR_NULL_HANDLE }
+{
+}
+
+// TODO: Handle errors.
+bool XrBridge::XrBridge::init(const std::string& application_name)
 {
 	std::cout << "[INFO] OpenXR version: " << XR_VERSION_MAJOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_MINOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_PATCH(XR_CURRENT_API_VERSION) << std::endl;
 
@@ -106,9 +110,8 @@ XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 		}
 		else
 		{
-			// TODO: Handle errors.
 			std::cerr << "[ERROR] API layer \"" << requested_api_layer << "\" is not available." << std::endl;
-			return;
+			return false;
 		}
 	}
 
@@ -126,9 +129,8 @@ XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 		}
 		else
 		{
-			// TODO: Handle errors.
 			std::cerr << "[ERROR] Extension \"" << requested_extension << "\" is not available." << std::endl;
-			return;
+			return false;
 		}
 	}
 
@@ -142,21 +144,18 @@ XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 	instance_create_info.enabledExtensionCount = static_cast<uint32_t>(active_extensions.size());
 	instance_create_info.enabledExtensionNames = active_extensions.data();
 	instance_create_info.applicationInfo = application_info;
-	// TODO: Handle errors.
 	OXR(xrCreateInstance(&instance_create_info, &this->instance));
 
 
 	// Load extension functions.
 	// Apparently we have to load these manually.
 	PFN_xrGetOpenGLGraphicsRequirementsKHR xrGetOpenGLGraphicsRequirementsKHR = nullptr;
-	// TODO: Handle errors.
 	OXR(xrGetInstanceProcAddr(this->instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction*)&xrGetOpenGLGraphicsRequirementsKHR));
 
 
 	// Print some information about the OpenXR instance.
 	XrInstanceProperties instance_properties = {};
 	instance_properties.type = XrStructureType::XR_TYPE_INSTANCE_PROPERTIES;
-	// TODO: Handle errors.
 	OXR(xrGetInstanceProperties(this->instance, &instance_properties));
 	std::cout << "[INFO] OpenXR runtime: " << instance_properties.runtimeName << "(" << XR_VERSION_MAJOR(instance_properties.runtimeVersion) << "." << XR_VERSION_MINOR(instance_properties.runtimeVersion) << "." << XR_VERSION_PATCH(instance_properties.runtimeVersion) << ")" << std::endl;
 
@@ -167,14 +166,12 @@ XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 	system_info.type = XrStructureType::XR_TYPE_SYSTEM_GET_INFO;
 	// NOTE: This is the form factor that we desire. This use case only requires a HMD.
 	system_info.formFactor = XrFormFactor::XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-	// TODO: Handle errors.
 	OXR(xrGetSystem(this->instance, &system_info, &this->system_id));
 
 
 	// Print the name of the system.
 	XrSystemProperties system_properties = {};
 	system_properties.type = XrStructureType::XR_TYPE_SYSTEM_PROPERTIES;
-	// TODO: Handle errors.
 	OXR(xrGetSystemProperties(this->instance, this->system_id, &system_properties));
 	std::cout << "[INFO] System name: " << system_properties.systemName << std::endl;
 
@@ -182,8 +179,8 @@ XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 	const HGLRC hglrc = wglGetCurrentContext();
 	if (hdc == NULL || hglrc == NULL)
 	{
-		// TODO: Handle errors.
 		std::cerr << "[ERROR] Failed to get native OpenGL context." << std::endl;
+		return false;
 	}
 
 	// Create the OpenGL binding.
@@ -207,36 +204,25 @@ XrBridge::XrBridge::XrBridge(const std::string& application_name) :
 	session_create_info.next = &graphics_binding;
 	session_create_info.createFlags = NULL;
 	session_create_info.systemId = this->system_id;
-	// TODO: Handle errors.
 	OXR(xrCreateSession(this->instance, &session_create_info, &this->session));
 
-	this->is_ready_flag = true;
+	return true;
 }
 
-XrBridge::XrBridge::~XrBridge()
+// TODO: Handle errors.
+bool XrBridge::XrBridge::free()
 {
-	this->is_ready_flag = false;
-
 	this->end_session();
 
 	xrDestroySession(this->session);
 	xrDestroyInstance(this->instance);
-}
 
-bool XrBridge::XrBridge::is_ready() const
-{
-	return this->is_ready_flag;
+	return true;
 }
 
 // TODO: Maybe return false if the application should quit.
 void XrBridge::XrBridge::update()
 {
-	if (this->is_ready() == false)
-	{
-		std::cout << "[WARNING] update() has been called while the this instance is not ready." << std::endl;
-		return;
-	}
-
 	if (this->is_currently_rendering_flag)
 	{
 		// TODO: Handle errors.

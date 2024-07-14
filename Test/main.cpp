@@ -36,7 +36,11 @@ int main(int argc, char** argv)
 
 	glEnable(GL_DEPTH_TEST);
 
-	XrBridge::XrBridge xrbridge = XrBridge::XrBridge("XrBridge Demo");
+	// Create an instance of XrBridge.
+	XrBridge::XrBridge xrbridge = XrBridge::XrBridge();
+
+	// Initialize the XrBridge instance.
+	xrbridge.init("XrBridge Demo");
 
 	const glm::mat4 camera_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.5f));
 	const Cube cube;
@@ -68,6 +72,10 @@ int main(int argc, char** argv)
 		// Swap the buffers.
 		glutSwapBuffers();
 	}
+
+	// Free up resources and destroy the OpenXR instance.
+	// This must be called BEFORE destroying the OpenGL context!
+	xrbridge.free();
 
 	// Free up resources and destroy the OpenGL context.
 	glutDestroyWindow(window);

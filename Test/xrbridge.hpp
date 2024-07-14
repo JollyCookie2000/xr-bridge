@@ -38,10 +38,10 @@ namespace XrBridge
 	class XrBridge
 	{
 	public:
-		XrBridge(const std::string& appication_name);
-		~XrBridge(void);
+		XrBridge();
 
-		bool is_ready(void) const;
+		bool init(const std::string& appication_name);
+		bool free(void);
 
 		void update(void);
 		void render(const render_function_t render_function);
@@ -51,7 +51,6 @@ namespace XrBridge
 
 		std::shared_ptr<Fbo> create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const;
 
-		bool is_ready_flag;
 		bool is_currently_rendering_flag;
 
 		XrInstance instance;
