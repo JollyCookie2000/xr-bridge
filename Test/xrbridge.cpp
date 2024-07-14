@@ -449,7 +449,7 @@ void XrBridge::XrBridge::begin_session()
 {
 	XrSessionBeginInfo session_begin_info = {};
 	session_begin_info.type = XrStructureType::XR_TYPE_SESSION_BEGIN_INFO;
-	// NOTE: This is the view cofiguration type that we desire. This use case only requires two eyes (stereo).
+	// NOTE: This is the view cofiguration type that we desire. This use case only requires stereo (two eyes).
 	session_begin_info.primaryViewConfigurationType = XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 	// TODO: Handle errors.
 	OXR(xrBeginSession(this->session, &session_begin_info));
