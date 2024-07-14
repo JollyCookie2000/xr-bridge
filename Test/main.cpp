@@ -1,3 +1,5 @@
+#include <memory>
+
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
@@ -41,12 +43,21 @@ int main(int argc, char** argv)
 
 	while (g_running)
 	{
+		// Process FreeGLUT events.
+		glutMainLoopEvent();
+
+		// Update XrBridge. This should be called once per frame.
 		xrbridge.update();
 
-		xrbridge.render([&] (const XrBridge::Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
+		xrbridge.render([&] (const XrBridge::Eye eye, std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
+			// Bind te FBO and set te viewport.
+			fbo->render();
+
+			// Clear the FBO.
 			glClearColor(0.22f, 0.36f, 0.42f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+			// Render an example cube.
 			cube.render(
 					projection_matrix *
 					glm::inverse(view_matrix) *
@@ -54,11 +65,12 @@ int main(int argc, char** argv)
 					glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)));
 		});
 
+		// Swap the buffers.
 		glutSwapBuffers();
-		glutMainLoopEvent();
 	}
 
-	glutLeaveMainLoop();
+	// Free up resources and destroy the OpenGL context.
+	glutDestroyWindow(window);
 
 	return 0;
 }

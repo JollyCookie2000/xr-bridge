@@ -425,19 +425,16 @@ void XrBridge::XrBridge::render(const render_function_t render_function)
 			glm::quat quaternion(current_view.pose.orientation.w, current_view.pose.orientation.x, current_view.pose.orientation.y, current_view.pose.orientation.z);
 			const glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position)) * glm::mat4_cast(quaternion);
 
-			// Render
-			glBindFramebuffer(GL_FRAMEBUFFER, current_swapchain.framebuffers.at(image_index));
-			// TODO: Maybe pass the view size to the user?
-			glViewport(0, 0, current_swapchain.width, current_swapchain.height);
+			const std::shared_ptr<Fbo> fbo = current_swapchain.framebuffers.at(image_index);
 
-			render_function(eye, projection_matrix, view_matrix);
+			render_function(eye, fbo, projection_matrix, view_matrix);
 
 			XrSwapchainImageReleaseInfo swapchain_image_release_info = {};
 			swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
 			OXR(xrReleaseSwapchainImage(current_swapchain.swapchain, &swapchain_image_release_info));
 		}
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		Fbo::disable();
 
 		composition_layer_projection.viewCount = static_cast<uint32_t>(composition_layer_projection_views.size());
 		composition_layer_projection.views = composition_layer_projection_views.data();
@@ -471,7 +468,7 @@ void XrBridge::XrBridge::begin_session()
 	// TODO: Handle errors.
 	OXR(xrBeginSession(this->session, &session_begin_info));
 
-	// A view more or less equates to a display. In the case of a VR headset, we will have 2 views, one for each eye.
+	// A view more or less equates to a display. In the case of a VR headset, since we have 2 eyes, we will ave 2 views.
 	uint32_t view_count = 0;
 	OXR(xrEnumerateViewConfigurationViews(this->instance, this->system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &view_count, nullptr));
 	std::vector<XrViewConfigurationView> view_configuration_views(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
@@ -512,8 +509,9 @@ void XrBridge::XrBridge::begin_session()
 
 		for (const auto& swapchain_image : swapchain_images)
 		{
-			const GLuint fbo_id = this->create_fbo(swapchain_image.image, swapchain.width, swapchain.height);
-			swapchain.framebuffers.push_back(fbo_id);
+			const std::shared_ptr<Fbo> fbo = this->create_fbo(swapchain_image.image, swapchain.width, swapchain.height);
+
+			swapchain.framebuffers.push_back(fbo);
 		}
 
 		this->swapchains.push_back(swapchain);
@@ -543,12 +541,6 @@ void XrBridge::XrBridge::end_session()
 	{
 		// TODO: Handle errors.
 		OXR(xrDestroySwapchain(swapchain.swapchain));
-
-		for (const auto& image : swapchain.framebuffers)
-		{
-			//this->destroy_fbo(framebuffer);
-			glDeleteTextures(1, &image);
-		}
 	}
 
 	this->swapchains.clear();
@@ -564,38 +556,30 @@ void XrBridge::XrBridge::end_session()
 	xrEndSession(this->session);
 }
 
-// TODO: Mention in the documentation that the currently binded framebuffer might change.
-GLuint XrBridge::XrBridge::create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const
+std::shared_ptr<Fbo> XrBridge::XrBridge::create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const
 {
-	GLuint framebuffer_id;
-	glGenFramebuffers(1, &framebuffer_id);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_id);
+	std::shared_ptr<Fbo> fbo = std::make_shared<Fbo>();
 
-	// Color buffer
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
-
-	// Depth buffer
-	// TODO: Correctly delete these.
-	GLuint depth_id;
-	glGenRenderbuffers(1, &depth_id);
-	glBindRenderbuffer(GL_RENDERBUFFER, depth_id);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height); // TODO: Allow the user to choose this.
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_id);
-
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	// Color attacment
+	if (fbo->bindTexture(0, Fbo::BIND_COLORTEXTURE, color) == false)
 	{
-		// TODO: Handle errors.
-		std::cerr << "[ERROR] Failed to create framebuffer." << std::endl;
+		Fbo::disable();
+		return nullptr;
 	}
 
-	//glDeleteRenderbuffers(1, &depth_id);
+	// Depth attachment
+	if (fbo->bindRenderBuffer(1, Fbo::BIND_DEPTHBUFFER, width, height) == false)
+	{
+		Fbo::disable();
+		return nullptr;
+	}
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	if (fbo->isOk() == false)
+	{
+		Fbo::disable();
+		return nullptr;
+	}
 
-	return framebuffer_id;
-}
-
-void XrBridge::XrBridge::destroy_fbo(const GLuint id) const
-{
-	glDeleteFramebuffers(1, &id);
+	Fbo::disable();
+	return fbo;
 }

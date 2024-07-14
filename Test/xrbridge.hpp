@@ -6,6 +6,7 @@
  */
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,8 @@
 
 #include <openxr/openxr.h>
 
+#include "fbo.h"
+
 namespace XrBridge
 {
 	// TODO: This should not be accessible from outside.
@@ -22,14 +25,16 @@ namespace XrBridge
 	struct Swapchain
 	{
 		XrSwapchain swapchain;
-		std::vector<GLuint> framebuffers;
+		std::vector<std::shared_ptr<Fbo>> framebuffers;
 		uint32_t width;
 		uint32_t height;
 	};
 
+	// TODO: Maybe make this an enum class?
 	enum Eye { LEFT, RIGHT };
 
-	typedef std::function<void(const Eye eye, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function_t;
+	// NOTE: Change here the signature of the user-provided render function.
+	typedef std::function<void(const Eye eye, const std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function_t;
 
 	class XrBridge
 	{
@@ -44,8 +49,8 @@ namespace XrBridge
 	private:
 		void begin_session(void);
 		void end_session(void);
-		GLuint create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const;
-		void destroy_fbo(const GLuint id) const;
+
+		std::shared_ptr<Fbo> create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const;
 
 		bool is_ready_flag;
 		bool is_currently_rendering_flag;
