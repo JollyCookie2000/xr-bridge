@@ -16,6 +16,12 @@
 #define OXR( function ) handle_openxr_errors( this->instance, function );
 #define XRV_TO_GV( xrv ) glm::vec3(xrv.x, xrv.y, xrv.z)
 
+#ifdef XRBRIDGE_DEBUG
+#define XRBRIDGE_DEBUG_OUT( message ) { std::cout << "[XrBridge][DEBUG] " << message << std::endl; }
+#else
+#define XRBRIDGE_DEBUG_OUT( message ) ;
+#endif
+
 static void handle_openxr_errors(const XrInstance instance, const XrResult result)
 {
 	if (result != XrResult::XR_SUCCESS)
@@ -30,13 +36,19 @@ static void handle_openxr_errors(const XrInstance instance, const XrResult resul
 
 static std::vector<XrApiLayerProperties> get_available_api_layers()
 {
-	// TODO: In case of error, return an empty vector and print an error to cerr.
 	uint32_t available_api_layers_count = 0;
-	// TODO: Handle errors.
-	xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr);
+	if (xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr) != XrResult::XR_SUCCESS)
+	{
+		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR API layers.");
+		return {};
+	}
+
 	std::vector<XrApiLayerProperties> available_api_layers(available_api_layers_count, { XR_TYPE_API_LAYER_PROPERTIES });
-	// TODO: Handle errors.
-	xrEnumerateApiLayerProperties(available_api_layers_count, &available_api_layers_count, available_api_layers.data());
+	if (xrEnumerateApiLayerProperties(available_api_layers_count, &available_api_layers_count, available_api_layers.data()) != XrResult::XR_SUCCESS)
+	{
+		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR API layers.");
+		return {};
+	}
 
 	return available_api_layers;
 }
@@ -53,11 +65,18 @@ static bool is_api_layer_supported(const std::string& api_layer_name)
 static std::vector<XrExtensionProperties> get_available_extensions()
 {
 	uint32_t available_extensions_count = 0;
-	// TODO: Handle errors.
-	xrEnumerateInstanceExtensionProperties(nullptr, 0, &available_extensions_count, nullptr);
+	if (xrEnumerateInstanceExtensionProperties(nullptr, 0, &available_extensions_count, nullptr) != XrResult::XR_SUCCESS)
+	{
+		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR extensions.");
+		return {};
+	}
+
 	std::vector<XrExtensionProperties> available_extensions(available_extensions_count, { XR_TYPE_EXTENSION_PROPERTIES });
-	// TODO: Handle errors.
-	xrEnumerateInstanceExtensionProperties(nullptr, available_extensions_count, &available_extensions_count, available_extensions.data());
+	if (xrEnumerateInstanceExtensionProperties(nullptr, available_extensions_count, &available_extensions_count, available_extensions.data()) != XrResult::XR_SUCCESS)
+	{
+		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR extensions.");
+		return {};
+	}
 
 	return available_extensions;
 }
@@ -219,8 +238,15 @@ bool XrBridge::XrBridge::free()
 {
 	this->end_session();
 
-	xrDestroySession(this->session);
-	xrDestroyInstance(this->instance);
+	if (xrDestroySession(this->session) != XrResult::XR_SUCCESS)
+	{
+		XRBRIDGE_DEBUG_OUT("Failed to destroy session.");
+	}
+
+	if (xrDestroyInstance(this->instance); != XrResult::XR_SUCCESS)
+	{
+		XRBRIDGE_DEBUG_OUT("Failed to destroy instance.");
+	}
 
 	return true;
 }

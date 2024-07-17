@@ -8,6 +8,8 @@
 
 #include "cube.hpp"
 
+// This is optional. It enables debug output.
+#define XRBRIDGE_DEBUG
 #include "xrbridge.hpp"
 
 static bool g_running = true;
