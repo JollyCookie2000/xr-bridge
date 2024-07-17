@@ -30,6 +30,7 @@ static void handle_openxr_errors(const XrInstance instance, const XrResult resul
 
 static std::vector<XrApiLayerProperties> get_available_api_layers()
 {
+	// TODO: In case of error, return an empty vector and print an error to cerr.
 	uint32_t available_api_layers_count = 0;
 	// TODO: Handle errors.
 	xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr);
@@ -84,6 +85,8 @@ XrBridge::XrBridge::XrBridge() :
 }
 
 // TODO: Handle errors.
+// TODO: Prevent calling this method if is_currently_rendering_flag is true.
+// TODO: Prevent calling this method if the object has already been initialized.
 bool XrBridge::XrBridge::init(const std::string& application_name)
 {
 	std::cout << "[INFO] OpenXR version: " << XR_VERSION_MAJOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_MINOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_PATCH(XR_CURRENT_API_VERSION) << std::endl;
@@ -210,6 +213,8 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 }
 
 // TODO: Handle errors.
+// TODO: Prevent calling this method if is_currently_rendering_flag is true.
+// TODO: Prevent calling this method if resources have already been freed.
 bool XrBridge::XrBridge::free()
 {
 	this->end_session();
@@ -221,6 +226,7 @@ bool XrBridge::XrBridge::free()
 }
 
 // TODO: Maybe return false if the application should quit.
+// TODO: Prevent calling this method if the object has not been initialized yet.
 void XrBridge::XrBridge::update()
 {
 	if (this->is_currently_rendering_flag)
@@ -314,6 +320,7 @@ void XrBridge::XrBridge::update()
 	}
 }
 
+// TODO: Prevent calling this method if the object has not been initialized yet.
 void XrBridge::XrBridge::render(const render_function_t render_function)
 {
 	if (this->is_currently_rendering_flag)

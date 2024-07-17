@@ -71,10 +71,12 @@ int main(int argc, char** argv)
 
 		// Render the scene.
 		// The render function accepts a user-defined function (in this case a lambda).
-		// This user-defined function will be called as many times as necessary (probably twice, once for each eye;
-		//  it could also not be called at all) to render each view.
+		// This user-defined function will be called as many times as necessary
+		//  (probably twice, once for each eye; it could also not be called at all)
+		//  to render each view.
 		xrbridge.render([&] (const XrBridge::Eye eye, std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
-			// Bind the FBO and set the viewport.
+			// Bind the FBO and set the viewport. This is not done automatically
+			//  by XrBridge, so we must do it ourselves!
 			fbo->render();
 
 			// Clear the FBO.
