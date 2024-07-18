@@ -97,8 +97,7 @@ namespace XrBridge
 		 * You **must** call this method when you wish to terminate the OpenXR session.
 		 * You **must not** call any other method of this object after.
 		 */
-		// TODO: Remove the return value (freeing resources should not throw errors).
-		bool free(void);
+		void free(void);
 
 		/**
 		 * Handle OpenXR events.
@@ -146,6 +145,13 @@ namespace XrBridge
 		// the user-provide render function (`render_function` parameter of the `render`)
 		// method.
 		bool is_currently_rendering_flag;
+
+		// This prevents the user from initializing this object multiple times or from calling
+		// other methods without first calling init().
+		bool is_already_initialized_flag;
+
+		// This prevents the user from re-using this object after free() was called.
+		bool is_already_deinitialized_flag;
 
 		XrInstance instance;
 		XrSystemId system_id;

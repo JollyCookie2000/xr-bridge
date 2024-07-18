@@ -22,6 +22,10 @@
 #define XRBRIDGE_DEBUG_OUT( message ) ;
 #endif
 
+#define XRBRIDGE_ERROR_OUT( message ) { std::cerr << "[XrBridge][ERROR] " << message << std::endl; }
+
+#define XRBRIDGE_WARNING_OUT( message ) { std::cout << "[XrBridge][WARNING] " << message << std::endl; }
+
 static void handle_openxr_errors(const XrInstance instance, const XrResult result)
 {
 	if (result != XrResult::XR_SUCCESS)
@@ -39,14 +43,14 @@ static std::vector<XrApiLayerProperties> get_available_api_layers()
 	uint32_t available_api_layers_count = 0;
 	if (xrEnumerateApiLayerProperties(0, &available_api_layers_count, nullptr) != XrResult::XR_SUCCESS)
 	{
-		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR API layers.");
+		XRBRIDGE_ERROR_OUT("Failed to enumerate OpenXR API layers.");
 		return {};
 	}
 
 	std::vector<XrApiLayerProperties> available_api_layers(available_api_layers_count, { XR_TYPE_API_LAYER_PROPERTIES });
 	if (xrEnumerateApiLayerProperties(available_api_layers_count, &available_api_layers_count, available_api_layers.data()) != XrResult::XR_SUCCESS)
 	{
-		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR API layers.");
+		XRBRIDGE_ERROR_OUT("Failed to enumerate OpenXR API layers.");
 		return {};
 	}
 
@@ -67,14 +71,14 @@ static std::vector<XrExtensionProperties> get_available_extensions()
 	uint32_t available_extensions_count = 0;
 	if (xrEnumerateInstanceExtensionProperties(nullptr, 0, &available_extensions_count, nullptr) != XrResult::XR_SUCCESS)
 	{
-		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR extensions.");
+		XRBRIDGE_ERROR_OUT("Failed to enumerate OpenXR extensions.");
 		return {};
 	}
 
 	std::vector<XrExtensionProperties> available_extensions(available_extensions_count, { XR_TYPE_EXTENSION_PROPERTIES });
 	if (xrEnumerateInstanceExtensionProperties(nullptr, available_extensions_count, &available_extensions_count, available_extensions.data()) != XrResult::XR_SUCCESS)
 	{
-		XRBRIDGE_DEBUG_OUT("Failed to enumerate OpenXR extensions.");
+		XRBRIDGE_ERROR_OUT("Failed to enumerate OpenXR extensions.");
 		return {};
 	}
 
@@ -93,22 +97,35 @@ static bool is_extension_supported(const std::string& extension_name)
 }
 
 XrBridge::XrBridge::XrBridge() :
-	is_currently_rendering_flag{ false },
-	instance{ XR_NULL_HANDLE },
-	system_id{ XR_NULL_SYSTEM_ID },
-	session{ XR_NULL_HANDLE },
-	session_state{ XrSessionState::XR_SESSION_STATE_UNKNOWN },
-	swapchains{ },
-	space{ XR_NULL_HANDLE }
+	is_already_initialized_flag { false },
+	is_currently_rendering_flag { false },
+	is_already_deinitialized_flag { false },
+	instance { XR_NULL_HANDLE },
+	system_id { XR_NULL_SYSTEM_ID },
+	session { XR_NULL_HANDLE },
+	session_state { XrSessionState::XR_SESSION_STATE_UNKNOWN },
+	swapchains { },
+	space { XR_NULL_HANDLE }
 {
 }
 
 // TODO: Handle errors.
-// TODO: Prevent calling this method if is_currently_rendering_flag is true.
-// TODO: Prevent calling this method if the object has already been initialized.
 bool XrBridge::XrBridge::init(const std::string& application_name)
 {
-	std::cout << "[INFO] OpenXR version: " << XR_VERSION_MAJOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_MINOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_PATCH(XR_CURRENT_API_VERSION) << std::endl;
+	if (this->is_already_initialized_flag)
+	{
+		XRBRIDGE_ERROR_OUT("This object has already been initialized!");
+		throw std::runtime_error("This object has already been initialized!");
+	}
+
+	if (this->is_already_deinitialized_flag)
+	{
+		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
+		throw std::runtime_error("This object has already been de-initialized!");
+	}
+
+
+	XRBRIDGE_DEBUG_OUT("OpenXR version: " << XR_VERSION_MAJOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_MINOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_PATCH(XR_CURRENT_API_VERSION));
 
 	XrApplicationInfo application_info = {};
 	std::strncpy(application_info.applicationName, application_name.c_str(), XR_MAX_APPLICATION_NAME_SIZE);
@@ -132,7 +149,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 		}
 		else
 		{
-			std::cerr << "[ERROR] API layer \"" << requested_api_layer << "\" is not available." << std::endl;
+			XRBRIDGE_ERROR_OUT("API layer \"" << requested_api_layer << "\" is not available");;
 			return false;
 		}
 	}
@@ -151,7 +168,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 		}
 		else
 		{
-			std::cerr << "[ERROR] Extension \"" << requested_extension << "\" is not available." << std::endl;
+			XRBRIDGE_ERROR_OUT("Extension \"" << requested_extension << "\" is not available.");
 			return false;
 		}
 	}
@@ -169,8 +186,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	OXR(xrCreateInstance(&instance_create_info, &this->instance));
 
 
-	// Load extension functions.
-	// Apparently we have to load these manually.
+	// Load extension functions. These need to be loaded manually.
 	PFN_xrGetOpenGLGraphicsRequirementsKHR xrGetOpenGLGraphicsRequirementsKHR = nullptr;
 	OXR(xrGetInstanceProcAddr(this->instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction*)&xrGetOpenGLGraphicsRequirementsKHR));
 
@@ -179,7 +195,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	XrInstanceProperties instance_properties = {};
 	instance_properties.type = XrStructureType::XR_TYPE_INSTANCE_PROPERTIES;
 	OXR(xrGetInstanceProperties(this->instance, &instance_properties));
-	std::cout << "[INFO] OpenXR runtime: " << instance_properties.runtimeName << "(" << XR_VERSION_MAJOR(instance_properties.runtimeVersion) << "." << XR_VERSION_MINOR(instance_properties.runtimeVersion) << "." << XR_VERSION_PATCH(instance_properties.runtimeVersion) << ")" << std::endl;
+	XRBRIDGE_DEBUG_OUT("OpenXR runtime: " << instance_properties.runtimeName << "(" << XR_VERSION_MAJOR(instance_properties.runtimeVersion) << "." << XR_VERSION_MINOR(instance_properties.runtimeVersion) << "." << XR_VERSION_PATCH(instance_properties.runtimeVersion) << ")");
 
 
 	// Get the ID of the system.
@@ -195,13 +211,13 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	XrSystemProperties system_properties = {};
 	system_properties.type = XrStructureType::XR_TYPE_SYSTEM_PROPERTIES;
 	OXR(xrGetSystemProperties(this->instance, this->system_id, &system_properties));
-	std::cout << "[INFO] System name: " << system_properties.systemName << std::endl;
+	XRBRIDGE_DEBUG_OUT("System name: " << system_properties.systemName);
 
 	const HDC hdc = wglGetCurrentDC();
 	const HGLRC hglrc = wglGetCurrentContext();
 	if (hdc == NULL || hglrc == NULL)
 	{
-		std::cerr << "[ERROR] Failed to get native OpenGL context." << std::endl;
+		XRBRIDGE_ERROR_OUT("Failed to get native OpenGL context.");
 		return false;
 	}
 
@@ -231,11 +247,28 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	return true;
 }
 
-// TODO: Handle errors.
-// TODO: Prevent calling this method if is_currently_rendering_flag is true.
-// TODO: Prevent calling this method if resources have already been freed.
-bool XrBridge::XrBridge::free()
+void XrBridge::XrBridge::free()
 {
+	if (this->is_already_initialized_flag == false)
+	{
+		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
+		throw std::runtime_error("This object has not been initialized yet!");
+	}
+
+	if (this->is_currently_rendering_flag)
+	{
+		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render fucntion!");
+		throw std::runtime_error("You cannot call this method inside the render fucntion!");
+	}
+
+	if (this->is_already_deinitialized_flag)
+	{
+		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
+		throw std::runtime_error("This object has already been de-initialized!");
+	}
+
+	this->is_already_initialized_flag = false;
+
 	this->end_session();
 
 	if (xrDestroySession(this->session) != XrResult::XR_SUCCESS)
@@ -243,23 +276,30 @@ bool XrBridge::XrBridge::free()
 		XRBRIDGE_DEBUG_OUT("Failed to destroy session.");
 	}
 
-	if (xrDestroyInstance(this->instance); != XrResult::XR_SUCCESS)
+	if (xrDestroyInstance(this->instance) != XrResult::XR_SUCCESS)
 	{
 		XRBRIDGE_DEBUG_OUT("Failed to destroy instance.");
 	}
-
-	return true;
 }
 
-// TODO: Maybe return false if the application should quit.
-// TODO: Prevent calling this method if the object has not been initialized yet.
-void XrBridge::XrBridge::update()
+bool XrBridge::XrBridge::update()
 {
 	if (this->is_currently_rendering_flag)
 	{
-		// TODO: Handle errors.
-		std::cerr << "[ERROR] Another method was called inside the rendering method. This is not allowed!" << std::endl;
-		throw "";
+		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render fucntion!");
+		throw std::runtime_error("You cannot call this method inside the render fucntion!");
+	}
+
+	if (this->is_already_initialized_flag == false)
+	{
+		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
+		throw std::runtime_error("This object has not been initialized yet!");
+	}
+
+	if (this->is_already_deinitialized_flag)
+	{
+		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
+		throw std::runtime_error("This object has already been de-initialized!");
 	}
 
 	while (true)
@@ -279,16 +319,15 @@ void XrBridge::XrBridge::update()
 		}
 		else
 		{
-			// TODO: Handle errors.
-			std::cerr << "[ERROR] There was an error while polling for events." << std::endl;
-			break;
+			XRBRIDGE_ERROR_OUT("There was an error while polling for events.");
+			return false;
 		}
 
 		switch (event_buffer.type)
 		{
 			// The event queue has overflown and some events were lost.
 		case XrStructureType::XR_TYPE_EVENT_DATA_EVENTS_LOST:
-			std::cout << "[WARNING] The event queue has overflown." << std::endl;
+			XRBRIDGE_WARNING_OUT("The event queue has overflown.");
 			break;
 		case XrStructureType::XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
 			// https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataInstanceLossPending.html
@@ -344,6 +383,8 @@ void XrBridge::XrBridge::update()
 		}
 		}
 	}
+
+	return true;
 }
 
 // TODO: Prevent calling this method if the object has not been initialized yet.
