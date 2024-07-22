@@ -1,3 +1,10 @@
+/*
+ * IMPORTANT: You must define the platform you are using in your PROJECT settings. In alternative, use the #define
+ * preprocessor directive to define the platform AT THE TOP of the xrbridge.cpp file.
+ *
+ * Define ONE of the following to choose the platform: XRBRIDGE_PLATFORM_WINDOWS, XRBRIDGE_PLATFORM_X11
+ */
+
 #include <memory>
 
 #include <GL/glew.h>

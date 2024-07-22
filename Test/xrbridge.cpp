@@ -2,16 +2,32 @@
 
 #include <iostream>
 
-#include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
+// Platform-specific includes
+#ifdef XRBRIDGE_PLATFORM_WINDOWS
+    #include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
+#elifdef XRBRIDGE_PLATFORM_WAYLAND
+    //#include <xcb/xcb.h>
+    //#include <xcb/glx.h>
+    //#include <GL/glx.h>
+    #include <wayland-client.h>
+#endif
 
 #include <GL/freeglut.h>
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+
+#ifdef XRBRIDGE_PLATFORM_WINDOWS
+    #define XR_USE_PLATFORM_WIN32
+#elifdef XRBRIDGE_PLATFORM_WAYLAND
+    //#define XR_USE_PLATFORM_XCB
+    #define XR_USE_PLATFORM_WAYLAND
+#endif
+
 #define XR_USE_GRAPHICS_API_OPENGL
-#define XR_USE_PLATFORM_WIN32
 #include <openxr/openxr_platform.h>
+
 
 #define OXR( function ) handle_openxr_errors( this->instance, function );
 #define XRV_TO_GV( xrv ) glm::vec3(xrv.x, xrv.y, xrv.z)
@@ -132,7 +148,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	application_info.applicationVersion = 1;
 	std::strncpy(application_info.engineName, "", XR_MAX_ENGINE_NAME_SIZE);
 	application_info.engineVersion = 0;
-	application_info.apiVersion = XR_API_VERSION_1_0; // NOTE: This is the OpenXR version to use.
+	application_info.apiVersion = XR_VERSION_1_0; // NOTE: This is the OpenXR version to use.
 
 
 	// Load API layers
@@ -213,21 +229,62 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	OXR(xrGetSystemProperties(this->instance, this->system_id, &system_properties));
 	XRBRIDGE_DEBUG_OUT("System name: " << system_properties.systemName);
 
-	const HDC hdc = wglGetCurrentDC();
-	const HGLRC hglrc = wglGetCurrentContext();
-	if (hdc == NULL || hglrc == NULL)
-	{
-		XRBRIDGE_ERROR_OUT("Failed to get native OpenGL context.");
-		return false;
-	}
+	// Platform-specific code.
+	#ifdef XRBRIDGE_PLATFORM_WINDOWS
+        XRBRIDGE_DEBUG_OUT("Using platform: Windows (Win32)");
 
-	// Create the OpenGL binding.
-	// NOTE: Change this to use another graphics API.
-	// TODO: Also support Linux.
-	XrGraphicsBindingOpenGLWin32KHR graphics_binding = {};
-	graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
-	graphics_binding.hDC = hdc;
-	graphics_binding.hGLRC = hglrc;
+        const HDC hdc = wglGetCurrentDC();
+        const HGLRC hglrc = wglGetCurrentContext();
+        if (hdc == NULL || hglrc == NULL)
+        {
+            XRBRIDGE_ERROR_OUT("Failed to get native OpenGL context.");
+            return false;
+        }
+
+        // Create the OpenGL binding.
+        // NOTE: Change this to use another graphics API.
+        XrGraphicsBindingOpenGLWin32KHR graphics_binding = {};
+        graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
+        graphics_binding.hDC = hdc;
+        graphics_binding.hGLRC = hglrc;
+    #elifdef XRBRIDGE_PLATFORM_WAYLAND
+        XRBRIDGE_DEBUG_OUT("Using platform: Wayland");
+
+        wl_display* wayland_display = wl_display_connect(nullptr);
+
+        XrGraphicsBindingOpenGLWaylandKHR graphics_binding = {};
+        graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WAYLAND_KHR;
+        graphics_binding.display = wayland_display;
+
+        /*XRBRIDGE_DEBUG_OUT("Using platform: X11 (XCB)");
+        // NOTE: This is hard-coded to use screen 0.
+        xcb_connection_t* xcb_connection = xcb_connect(nullptr, nullptr);
+
+        int attributes[] = {
+            GLX_X_RENDERABLE, True,
+            GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+            GLX_RED_SIZE, 8,
+            GLX_GREEN_SIZE, 8,
+            GLX_BLUE_SIZE, 8,
+            GLX_DEPTH_SIZE, 24,
+            None
+        };
+
+        GLXFBConfig* configs = glXChooseFBConfig(xcb_connection, 0, attributes);
+
+        if (configs == nullptr)
+        {
+            throw std::runtime_error();
+        }
+
+        XrGraphicsBindingOpenGLXcbKHR graphics_binding = {};
+        graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XCB_KHR;
+        graphics_binding.connection = xcb_connextion;
+        graphics_binding.screenNumber = 0; // NOTE: This is hard-coded to use screen 0.
+        graphics_binding.fbconfigid = configs[0];*/
+
+        // TODO: Do I need to xcb_disconnect?
+	#endif
 
 
 	// TODO: Verify OpenGL version requirements.

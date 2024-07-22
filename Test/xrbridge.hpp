@@ -104,8 +104,10 @@ namespace XrBridge
 		 *
 		 * This method **must** be called immediately before each call to the `render()`
 		 * method.
+		 *
+		 * @return `true` if no error occurred, `false` otherwise.
 		 */
-		void update(void);
+		bool update(void);
 
 		/**
 		 * Render the scene to the VR headset.

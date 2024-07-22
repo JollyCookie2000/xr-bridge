@@ -13,7 +13,15 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
+					<Add option="-DXRBRIDGE_PLATFORM_WAYLAND" />
 				</Compiler>
+				<Linker>
+					<Add library="GLEW" />
+					<Add library="GL" />
+					<Add library="wayland-client" />
+					<Add library="glut" />
+					<Add library="openxr_loader" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/Test" prefix_auto="1" extension_auto="1" />
@@ -22,6 +30,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add option="-DXRBRIDGE_PLATFORM_WAYLAND" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
