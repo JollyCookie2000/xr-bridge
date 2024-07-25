@@ -29,7 +29,13 @@
 #include <openxr/openxr_platform.h>
 
 
-#define OXR( function ) handle_openxr_errors( this->instance, function );
+#define RETURN_FALSE_ON_OXR_ERROR( function, message )            \
+    if (check_openxr_result( this->instance, function ) == false) \
+    {                                                             \
+        XRBRIDGE_ERROR_OUT(message);                              \
+        return false;                                             \
+    }
+
 #define XRV_TO_GV( xrv ) glm::vec3(xrv.x, xrv.y, xrv.z)
 
 #ifdef XRBRIDGE_DEBUG
@@ -42,16 +48,20 @@
 
 #define XRBRIDGE_WARNING_OUT( message ) { std::cout << "[XrBridge][WARNING] " << message << std::endl; }
 
-static void handle_openxr_errors(const XrInstance instance, const XrResult result)
+#define NULL_FLAG 0
+
+static bool check_openxr_result(const XrInstance instance, const XrResult result)
 {
 	if (result != XrResult::XR_SUCCESS)
 	{
-		char message[64];
+		char message[XR_MAX_RESULT_STRING_SIZE] = {};
 		xrResultToString(instance, result, message);
-		std::cout << "[ERROR] OpenXR error: " << message << std::endl;
+		XRBRIDGE_ERROR_OUT("OpenXR error: [" << result << "] " << message);
 
-		throw message;
+		return false;
 	}
+
+	return true;
 }
 
 static std::vector<XrApiLayerProperties> get_available_api_layers()
@@ -113,8 +123,8 @@ static bool is_extension_supported(const std::string& extension_name)
 }
 
 XrBridge::XrBridge::XrBridge() :
+    is_currently_rendering_flag { false },
 	is_already_initialized_flag { false },
-	is_currently_rendering_flag { false },
 	is_already_deinitialized_flag { false },
 	instance { XR_NULL_HANDLE },
 	system_id { XR_NULL_SYSTEM_ID },
@@ -125,7 +135,6 @@ XrBridge::XrBridge::XrBridge() :
 {
 }
 
-// TODO: Handle errors.
 bool XrBridge::XrBridge::init(const std::string& application_name)
 {
 	if (this->is_already_initialized_flag)
@@ -193,24 +202,24 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	// Create the OpenXR instance.
 	XrInstanceCreateInfo instance_create_info = {};
 	instance_create_info.type = XrStructureType::XR_TYPE_INSTANCE_CREATE_INFO;
-	instance_create_info.createFlags = NULL;
+	instance_create_info.createFlags = NULL_FLAG;
 	instance_create_info.enabledApiLayerCount = static_cast<uint32_t>(active_api_layers.size());
 	instance_create_info.enabledApiLayerNames = active_api_layers.data();
 	instance_create_info.enabledExtensionCount = static_cast<uint32_t>(active_extensions.size());
 	instance_create_info.enabledExtensionNames = active_extensions.data();
 	instance_create_info.applicationInfo = application_info;
-	OXR(xrCreateInstance(&instance_create_info, &this->instance));
+	RETURN_FALSE_ON_OXR_ERROR(xrCreateInstance(&instance_create_info, &this->instance), "Failed to create OpenXR instance.");
 
 
 	// Load extension functions. These need to be loaded manually.
 	PFN_xrGetOpenGLGraphicsRequirementsKHR xrGetOpenGLGraphicsRequirementsKHR = nullptr;
-	OXR(xrGetInstanceProcAddr(this->instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction*)&xrGetOpenGLGraphicsRequirementsKHR));
+	RETURN_FALSE_ON_OXR_ERROR(xrGetInstanceProcAddr(this->instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction*)&xrGetOpenGLGraphicsRequirementsKHR), "Failed to get function pointer.");
 
 
 	// Print some information about the OpenXR instance.
 	XrInstanceProperties instance_properties = {};
 	instance_properties.type = XrStructureType::XR_TYPE_INSTANCE_PROPERTIES;
-	OXR(xrGetInstanceProperties(this->instance, &instance_properties));
+	RETURN_FALSE_ON_OXR_ERROR(xrGetInstanceProperties(this->instance, &instance_properties), "Failed to get instance properties.");
 	XRBRIDGE_DEBUG_OUT("OpenXR runtime: " << instance_properties.runtimeName << "(" << XR_VERSION_MAJOR(instance_properties.runtimeVersion) << "." << XR_VERSION_MINOR(instance_properties.runtimeVersion) << "." << XR_VERSION_PATCH(instance_properties.runtimeVersion) << ")");
 
 
@@ -220,13 +229,13 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	system_info.type = XrStructureType::XR_TYPE_SYSTEM_GET_INFO;
 	// NOTE: This is the form factor that we desire. This use case only requires a HMD.
 	system_info.formFactor = XrFormFactor::XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
-	OXR(xrGetSystem(this->instance, &system_info, &this->system_id));
+	RETURN_FALSE_ON_OXR_ERROR(xrGetSystem(this->instance, &system_info, &this->system_id), "Failed to get VR system.");
 
 
 	// Print the name of the system.
 	XrSystemProperties system_properties = {};
 	system_properties.type = XrStructureType::XR_TYPE_SYSTEM_PROPERTIES;
-	OXR(xrGetSystemProperties(this->instance, this->system_id, &system_properties));
+	RETURN_FALSE_ON_OXR_ERROR(xrGetSystemProperties(this->instance, this->system_id, &system_properties), "Failed to get VR system properties.");
 	XRBRIDGE_DEBUG_OUT("System name: " << system_properties.systemName);
 
 	// Platform-specific code.
@@ -297,9 +306,9 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	XrSessionCreateInfo session_create_info = {};
 	session_create_info.type = XrStructureType::XR_TYPE_SESSION_CREATE_INFO;
 	session_create_info.next = &graphics_binding;
-	session_create_info.createFlags = NULL;
+	session_create_info.createFlags = NULL_FLAG;
 	session_create_info.systemId = this->system_id;
-	OXR(xrCreateSession(this->instance, &session_create_info, &this->session));
+	RETURN_FALSE_ON_OXR_ERROR(xrCreateSession(this->instance, &session_create_info, &this->session), "Failed to create OpenXR session.");
 
 	return true;
 }
@@ -391,7 +400,7 @@ bool XrBridge::XrBridge::update()
 			// TODO: Should this case be handled? Or can I just stop working?
 			// The OpenXR instance is about to disconnect. This should not normally happen.
 			std::cout << "[WARNING] The OpenXR instance is about to be lost. Recovery from this is not supported." << std::endl;
-			OXR(xrDestroyInstance(this->instance));
+			RETURN_FALSE_ON_OXR_ERROR(xrDestroyInstance(this->instance), "Faild to destroy instance.");
 			this->instance = XR_NULL_HANDLE;
 			break;
 		case XrStructureType::XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
@@ -403,7 +412,7 @@ bool XrBridge::XrBridge::update()
 				break;
 			}
 
-			std::cout << "[DEBUG] XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING" << std::endl;
+			XRBRIDGE_DEBUG_OUT("XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING");
 
 			break;
 		}
@@ -420,19 +429,32 @@ bool XrBridge::XrBridge::update()
 
 			if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_READY)
 			{
-				std::cout << "[DEBUG] Session state has changed: XR_SESSION_STATE_READY." << std::endl;
-				this->begin_session();
+                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_READY.");
+
+				if (this->begin_session() == false)
+				{
+                    XRBRIDGE_ERROR_OUT("Failed to begin OpenXR session.");
+                    return false;
+				}
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_STOPPING)
 			{
-				this->end_session();
+                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_STOPPING.");
+
+				if (this->end_session() == false)
+				{
+                    XRBRIDGE_ERROR_OUT("Failed to end OpenXR session.");
+                    return false;
+				}
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_LOSS_PENDING)
 			{
+                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_LOSS_PENDING.");
 				// TODO: Exit the application.
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_EXITING)
 			{
+                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_EXITING.");
 				// TODO: Exit the application.
 			}
 
@@ -444,14 +466,24 @@ bool XrBridge::XrBridge::update()
 	return true;
 }
 
-// TODO: Prevent calling this method if the object has not been initialized yet.
-void XrBridge::XrBridge::render(const render_function_t render_function)
+bool XrBridge::XrBridge::render(const render_function_t render_function)
 {
 	if (this->is_currently_rendering_flag)
 	{
-		// TODO: Handle errors.
-		std::cerr << "[ERROR] Another method was called inside the rendering method. This is not allowed!" << std::endl;
-		throw "";
+		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render fucntion!");
+		throw std::runtime_error("You cannot call this method inside the render fucntion!");
+	}
+
+	if (this->is_already_initialized_flag == false)
+	{
+		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
+		throw std::runtime_error("This object has not been initialized yet!");
+	}
+
+	if (this->is_already_deinitialized_flag)
+	{
+		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
+		throw std::runtime_error("This object has already been de-initialized!");
 	}
 
 	this->is_currently_rendering_flag = true;
@@ -461,11 +493,11 @@ void XrBridge::XrBridge::render(const render_function_t render_function)
 	XrFrameWaitInfo frame_wait_info = {};
 	frame_wait_info.type = XrStructureType::XR_TYPE_FRAME_WAIT_INFO;
 	// Wait for synchronization with the headset display.
-	OXR(xrWaitFrame(this->session, &frame_wait_info, &frame_state));
+	RETURN_FALSE_ON_OXR_ERROR(xrWaitFrame(this->session, &frame_wait_info, &frame_state), "Faield to wait for frame.");
 
 	XrFrameBeginInfo frame_begin_info = {};
 	frame_begin_info.type = XrStructureType::XR_TYPE_FRAME_BEGIN_INFO;
-	OXR(xrBeginFrame(this->session, &frame_begin_info));
+	RETURN_FALSE_ON_OXR_ERROR(xrBeginFrame(this->session, &frame_begin_info), "Failed to begin frame.");
 
 	std::vector<XrCompositionLayerBaseHeader*> layers = {};
 
@@ -479,7 +511,7 @@ void XrBridge::XrBridge::render(const render_function_t render_function)
 	// 3D view
 	XrCompositionLayerProjection composition_layer_projection = {};
 	composition_layer_projection.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION;
-	composition_layer_projection.layerFlags = NULL;
+	composition_layer_projection.layerFlags = NULL_FLAG;
 	composition_layer_projection.space = this->space;
 	composition_layer_projection.viewCount = 0; // This will be filled up later.
 	composition_layer_projection.views = nullptr; // This will be filled up later.
@@ -513,12 +545,12 @@ void XrBridge::XrBridge::render(const render_function_t render_function)
 			uint32_t image_index = 0;
 			XrSwapchainImageAcquireInfo swapchain_image_acquire_info = {};
 			swapchain_image_acquire_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO;
-			OXR(xrAcquireSwapchainImage(current_swapchain.swapchain, &swapchain_image_acquire_info, &image_index));
+			RETURN_FALSE_ON_OXR_ERROR(xrAcquireSwapchainImage(current_swapchain.swapchain, &swapchain_image_acquire_info, &image_index), "Failed to acquire swapchain image.");
 
 			XrSwapchainImageWaitInfo swapchain_image_wait_info = {};
 			swapchain_image_wait_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO;
 			swapchain_image_wait_info.timeout = XR_INFINITE_DURATION;
-			OXR(xrWaitSwapchainImage(current_swapchain.swapchain, &swapchain_image_wait_info));
+			RETURN_FALSE_ON_OXR_ERROR(xrWaitSwapchainImage(current_swapchain.swapchain, &swapchain_image_wait_info), "Failed to wait for swapchain image.");
 
 			XrCompositionLayerProjectionView composition_layer_projection_view = {};
 			composition_layer_projection_view.type = XrStructureType::XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
@@ -548,7 +580,7 @@ void XrBridge::XrBridge::render(const render_function_t render_function)
 
 			XrSwapchainImageReleaseInfo swapchain_image_release_info = {};
 			swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
-			OXR(xrReleaseSwapchainImage(current_swapchain.swapchain, &swapchain_image_release_info));
+			RETURN_FALSE_ON_OXR_ERROR(xrReleaseSwapchainImage(current_swapchain.swapchain, &swapchain_image_release_info), "Failed to release swapchain image.");
 		}
 
 		Fbo::disable();
@@ -571,25 +603,26 @@ void XrBridge::XrBridge::render(const render_function_t render_function)
 	frame_end_info.environmentBlendMode = XrEnvironmentBlendMode::XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
 	frame_end_info.layerCount = static_cast<uint32_t>(layers.size());
 	frame_end_info.layers = layers.data();
-	OXR(xrEndFrame(this->session, &frame_end_info));
+	RETURN_FALSE_ON_OXR_ERROR(xrEndFrame(this->session, &frame_end_info), "Failed to end frame.");
 
 	this->is_currently_rendering_flag = false;
+
+	return true;
 }
 
-void XrBridge::XrBridge::begin_session()
+bool XrBridge::XrBridge::begin_session()
 {
 	XrSessionBeginInfo session_begin_info = {};
 	session_begin_info.type = XrStructureType::XR_TYPE_SESSION_BEGIN_INFO;
 	// NOTE: This is the view cofiguration type that we desire. This use case only requires stereo (two eyes).
 	session_begin_info.primaryViewConfigurationType = XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-	// TODO: Handle errors.
-	OXR(xrBeginSession(this->session, &session_begin_info));
+	RETURN_FALSE_ON_OXR_ERROR(xrBeginSession(this->session, &session_begin_info), "Faield to begin session.");
 
 	// A view more or less equates to a display. In the case of a VR headset, since we have 2 eyes, we will ave 2 views.
 	uint32_t view_count = 0;
-	OXR(xrEnumerateViewConfigurationViews(this->instance, this->system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &view_count, nullptr));
+	RETURN_FALSE_ON_OXR_ERROR(xrEnumerateViewConfigurationViews(this->instance, this->system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, 0, &view_count, nullptr), "Faield to enumerate view configuration views.");
 	std::vector<XrViewConfigurationView> view_configuration_views(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
-	OXR(xrEnumerateViewConfigurationViews(this->instance, this->system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, view_count, &view_count, view_configuration_views.data()));
+	RETURN_FALSE_ON_OXR_ERROR(xrEnumerateViewConfigurationViews(this->instance, this->system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, view_count, &view_count, view_configuration_views.data()), "Faield to enumerate view configuration views.");
 
 	// TODO: Return an error if the number of views is not 2.
 
@@ -601,7 +634,7 @@ void XrBridge::XrBridge::begin_session()
 
 		XrSwapchainCreateInfo swapchain_create_info = {};
 		swapchain_create_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_CREATE_INFO;
-		swapchain_create_info.createFlags = NULL;
+		swapchain_create_info.createFlags = NULL_FLAG;
 		// TODO: Is XR_SWAPCHAIN_USAGE_SAMPLED_BIT actually necessary?
 		// TODO: Apparently, OpenGL ignores these. If so, remove them.
 		swapchain_create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
@@ -613,20 +646,25 @@ void XrBridge::XrBridge::begin_session()
 		swapchain_create_info.faceCount = 1;
 		swapchain_create_info.arraySize = 1;
 		swapchain_create_info.mipCount = 1;
-		// TODO: Handle errors.
-		OXR(xrCreateSwapchain(this->session, &swapchain_create_info, &swapchain.swapchain));
+		RETURN_FALSE_ON_OXR_ERROR(xrCreateSwapchain(this->session, &swapchain_create_info, &swapchain.swapchain), "Failed to create swapchain.");
 
 		// Create the single images inside the swapchain.
 		// If the runtime is using double-buffering, there will be 2 images per swapchain. For triple buffering,
 		//  the images will be 3.
 		uint32_t swapchain_image_count = 0;
-		OXR(xrEnumerateSwapchainImages(swapchain.swapchain, 0, &swapchain_image_count, nullptr));
+		RETURN_FALSE_ON_OXR_ERROR(xrEnumerateSwapchainImages(swapchain.swapchain, 0, &swapchain_image_count, nullptr), "Failed to enumerate swapchain images.");
 		std::vector<XrSwapchainImageOpenGLKHR> swapchain_images(swapchain_image_count, { XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR }); // NOTE: Change this to use another graphics API.
-		OXR(xrEnumerateSwapchainImages(swapchain.swapchain, swapchain_image_count, &swapchain_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(swapchain_images.data())));
+		RETURN_FALSE_ON_OXR_ERROR(xrEnumerateSwapchainImages(swapchain.swapchain, swapchain_image_count, &swapchain_image_count, reinterpret_cast<XrSwapchainImageBaseHeader*>(swapchain_images.data())), "Failed to enumerate swapchain images.");
 
 		for (const auto& swapchain_image : swapchain_images)
 		{
 			const std::shared_ptr<Fbo> fbo = this->create_fbo(swapchain_image.image, swapchain.width, swapchain.height);
+
+			if (fbo == nullptr)
+			{
+                XRBRIDGE_ERROR_OUT("Failed to create FBO.");
+                return false;
+			}
 
 			swapchain.framebuffers.push_back(fbo);
 		}
@@ -648,16 +686,17 @@ void XrBridge::XrBridge::begin_session()
 		{ 0.0f, 0.0f, 0.0f }, // Position
 	};
 
-	OXR(xrCreateReferenceSpace(this->session, &reference_space_info, &this->space));
+	RETURN_FALSE_ON_OXR_ERROR(xrCreateReferenceSpace(this->session, &reference_space_info, &this->space), "Failed to create reference space.");
+
+	return true;
 }
 
-void XrBridge::XrBridge::end_session()
+bool XrBridge::XrBridge::end_session()
 {
 	// Destroy swapchains.
 	for (const auto& swapchain : this->swapchains)
 	{
-		// TODO: Handle errors.
-		OXR(xrDestroySwapchain(swapchain.swapchain));
+		RETURN_FALSE_ON_OXR_ERROR(xrDestroySwapchain(swapchain.swapchain), "Failed to destroy swapchain.");
 	}
 
 	this->swapchains.clear();
@@ -665,12 +704,14 @@ void XrBridge::XrBridge::end_session()
 	// Destroy space.
 	if (this->space != XR_NULL_HANDLE)
 	{
-		OXR(xrDestroySpace(this->space));
+		RETURN_FALSE_ON_OXR_ERROR(xrDestroySpace(this->space), "Failed to destroy space.");
 		this->space = XR_NULL_HANDLE;
 	}
 
 	// End the session.
-	xrEndSession(this->session);
+	RETURN_FALSE_ON_OXR_ERROR(xrEndSession(this->session), "Failed to end session.");
+
+	return true;
 }
 
 std::shared_ptr<Fbo> XrBridge::XrBridge::create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const

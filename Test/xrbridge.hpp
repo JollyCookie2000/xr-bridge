@@ -128,6 +128,7 @@ namespace XrBridge
 		 * You **must not** store this pointer outside of the `render_function`!
 		 * 3. `const glm::mat4 projection_matrix`: The projection matrix to be used for rendering.
 		 * 4. `const glm::mat4 view_matrix`: The view matrix to be used for rendering.
+		 * @return `true` if no error occurred, `false` otherwise.
 		 *
 		 * Example using a lambda:
 		 * ```CPP
@@ -136,10 +137,10 @@ namespace XrBridge
 		 * }
 		 * ```
 		 */
-		void render(const render_function_t render_function);
+		bool render(const render_function_t render_function);
 	private:
-		void begin_session(void);
-		void end_session(void);
+		bool begin_session(void);
+		bool end_session(void);
 
 		std::shared_ptr<Fbo> create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const;
 
