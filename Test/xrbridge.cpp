@@ -157,7 +157,8 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	application_info.applicationVersion = 1;
 	std::strncpy(application_info.engineName, "", XR_MAX_ENGINE_NAME_SIZE);
 	application_info.engineVersion = 0;
-	application_info.apiVersion = XR_VERSION_1_0; // NOTE: This is the OpenXR version to use.
+	application_info.apiVersion = XR_MAKE_VERSION(1, 0, 0); // NOTE: This is the OpenXR version to use.
+	// TODO: Document SteamVR's OpenXR version.
 
 
 	// Load API layers
