@@ -61,7 +61,11 @@ int main(int argc, char** argv)
 	// Initialize the XrBridge instance.
 	// The string is the name of the application that appears on SteamVR. This is not
 	//  really that important. You can put whatever.
-	xrbridge.init("XrBridge Demo");
+	if (xrbridge.init("XrBridge Demo") == false)
+	{
+		std::cerr << "[ERROR] Failed to initialize XrBridge!" << std::endl;
+		return 1;
+	}
 
 	// We hard-code a camera at position [0.0, 0.5, 0.5].
 	// NOTE: 1 unit = 1 meter
@@ -76,14 +80,18 @@ int main(int argc, char** argv)
 		glutMainLoopEvent();
 
 		// Update XrBridge. This should be called once per frame.
-		xrbridge.update();
+		if (xrbridge.update() == false)
+		{
+			std::cerr << "[ERROR] Failed to update XrBridge!" << std::endl;
+			return 1;
+		}
 
 		// Render the scene.
 		// The render function accepts a user-defined function (in this case a lambda).
 		// This user-defined function will be called as many times as necessary
 		//  (probably twice, once for each eye; it could also not be called at all)
 		//  to render each view.
-		xrbridge.render([&] (const XrBridge::Eye eye, std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
+		const bool did_render = xrbridge.render([&] (const XrBridge::Eye eye, std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
 			// Bind the FBO and set the viewport. This is not done automatically
 			//  by XrBridge, so we must do it ourselves!
 			fbo->render();
@@ -99,6 +107,12 @@ int main(int argc, char** argv)
 					glm::inverse(camera_matrix) *
 					glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)));
 		});
+
+		if (did_render == false)
+		{
+			std::cerr << "[ERROR] Failed to render!" << std::endl;
+			return 1;
+		}
 
 		// Swap the buffers.
 		glutSwapBuffers();
