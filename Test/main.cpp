@@ -1,10 +1,3 @@
-/*
- * IMPORTANT: You must define the platform you are using in your PROJECT settings. In alternative, use the #define
- * preprocessor directive to define the platform AT THE TOP of the xrbridge.cpp file.
- *
- * Define ONE of the following to choose the platform: XRBRIDGE_PLATFORM_WINDOWS, XRBRIDGE_PLATFORM_X11
- */
-
 #include <memory>
 
 #include <GL/glew.h>
@@ -15,8 +8,9 @@
 
 #include "cube.hpp"
 
-// This is optional. It enables debug output.
-#define XRBRIDGE_DEBUG
+// IMPORTANT: You MUST define the platform you are using in your PROJECT settings.
+// Define ONE of the following to choose the platform: XRBRIDGE_PLATFORM_WINDOWS, XRBRIDGE_PLATFORM_X11
+// You can define XRBRIDGE_DEBUG at the project level to enable debug output for XrBridge.
 #include "xrbridge.hpp"
 
 static bool g_running = true;
@@ -106,6 +100,12 @@ int main(int argc, char** argv)
 					glm::inverse(view_matrix) *
 					glm::inverse(camera_matrix) *
 					glm::scale(glm::mat4(1.0f), glm::vec3(0.1f)));
+
+			if (eye == XrBridge::Eye::LEFT)
+			{
+				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+				glBlitFramebuffer(0, 0, 800, 600, 0, 0, 800, 600, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
 		});
 
 		if (did_render == false)
