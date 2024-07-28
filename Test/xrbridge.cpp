@@ -632,7 +632,14 @@ bool XrBridge::XrBridge::begin_session()
 		// TODO: Apparently, OpenGL ignores these. If so, remove them.
 		swapchain_create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
 		// https://steamcommunity.com/app/250820/discussions/8/3121550424355682585/
-		swapchain_create_info.format = GL_RGBA16F; // TODO: Allow the user to choose this.
+		// TODO: Improve the handling of the swapchain format.
+		#ifdef XRBRIDGE_PLATFORM_WINDOWS
+            swapchain_create_info.format = GL_RGBA16F; // TODO: Allow the user to choose this.
+        #endif
+        #ifdef XRBRIDGE_PLATFORM_X11
+            // Apparently SteamVR on Linux (at least up to version 2.7.4) only supports SRGB.
+            swapchain_create_info.format = GL_SRGB8; // TODO: Allow the user to choose this.
+		#endif
 		swapchain_create_info.width = view_configuration_view.recommendedImageRectWidth;
 		swapchain_create_info.height = view_configuration_view.recommendedImageRectHeight;
 		swapchain_create_info.sampleCount = view_configuration_view.recommendedSwapchainSampleCount;
