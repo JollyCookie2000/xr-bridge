@@ -143,12 +143,6 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 		throw std::runtime_error("This object has already been initialized!");
 	}
 
-	if (this->is_already_deinitialized_flag)
-	{
-		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		throw std::runtime_error("This object has already been de-initialized!");
-	}
-
 
 	XRBRIDGE_DEBUG_OUT("OpenXR version: " << XR_VERSION_MAJOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_MINOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_PATCH(XR_CURRENT_API_VERSION));
 
@@ -311,6 +305,8 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	session_create_info.systemId = this->system_id;
 	RETURN_FALSE_ON_OXR_ERROR(xrCreateSession(this->instance, &session_create_info, &this->session), "Failed to create OpenXR session.");
 
+	this->is_already_initialized_flag = true;
+
 	return true;
 }
 
@@ -334,7 +330,7 @@ void XrBridge::XrBridge::free()
 		throw std::runtime_error("This object has already been de-initialized!");
 	}
 
-	this->is_already_initialized_flag = false;
+	this->is_already_deinitialized_flag = true;
 
 	this->end_session();
 
