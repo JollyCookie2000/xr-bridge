@@ -13,12 +13,12 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
-					<Add option="-DXRBRIDGE_PLATFORM_WAYLAND" />
+					<Add option="-DXRBRIDGE_PLATFORM_X11" />
+					<Add option="-DXRBRIDGE_DEBUG" />
 				</Compiler>
 				<Linker>
 					<Add library="GLEW" />
 					<Add library="GL" />
-					<Add library="wayland-client" />
 					<Add library="glut" />
 					<Add library="openxr_loader" />
 				</Linker>
@@ -30,10 +30,14 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
-					<Add option="-DXRBRIDGE_PLATFORM_WAYLAND" />
+					<Add option="-DXRBRIDGE_PLATFORM_X11" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
+					<Add library="GLEW" />
+					<Add library="GL" />
+					<Add library="glut" />
+					<Add library="openxr_loader" />
 				</Linker>
 			</Target>
 		</Build>

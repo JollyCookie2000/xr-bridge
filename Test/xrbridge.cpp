@@ -5,11 +5,10 @@
 // Platform-specific includes
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
     #include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
-#elifdef XRBRIDGE_PLATFORM_WAYLAND
-    //#include <xcb/xcb.h>
-    //#include <xcb/glx.h>
-    //#include <GL/glx.h>
-    #include <wayland-client.h>
+#endif
+#ifdef XRBRIDGE_PLATFORM_X11
+    #include <GL/glx.h>
+    #include <X11/Xlib.h>
 #endif
 
 #include <GL/freeglut.h>
@@ -20,9 +19,9 @@
 
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
     #define XR_USE_PLATFORM_WIN32
-#elifdef XRBRIDGE_PLATFORM_WAYLAND
-    //#define XR_USE_PLATFORM_XCB
-    #define XR_USE_PLATFORM_WAYLAND
+#endif
+#ifdef XRBRIDGE_PLATFORM_X11
+    #define XR_USE_PLATFORM_XLIB
 #endif
 
 #define XR_USE_GRAPHICS_API_OPENGL
@@ -137,6 +136,12 @@ XrBridge::XrBridge::XrBridge() :
 
 bool XrBridge::XrBridge::init(const std::string& application_name)
 {
+    if (this->is_already_deinitialized_flag)
+	{
+		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
+		throw std::runtime_error("This object has already been de-initialized!");
+	}
+
 	if (this->is_already_initialized_flag)
 	{
 		XRBRIDGE_ERROR_OUT("This object has already been initialized!");
@@ -152,7 +157,6 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	std::strncpy(application_info.engineName, "", XR_MAX_ENGINE_NAME_SIZE);
 	application_info.engineVersion = 0;
 	application_info.apiVersion = XR_MAKE_VERSION(1, 0, 0); // NOTE: This is the OpenXR version to use.
-	// TODO: Document SteamVR's OpenXR version.
 
 
 	// Load API layers
@@ -251,43 +255,35 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
         graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
         graphics_binding.hDC = hdc;
         graphics_binding.hGLRC = hglrc;
-    #elifdef XRBRIDGE_PLATFORM_WAYLAND
-        XRBRIDGE_DEBUG_OUT("Using platform: Wayland");
+    #endif
+    #ifdef XRBRIDGE_PLATFORM_X11
+        XRBRIDGE_DEBUG_OUT("Using platform: X11 (XLIB)");
 
-        wl_display* wayland_display = wl_display_connect(nullptr);
-
-        XrGraphicsBindingOpenGLWaylandKHR graphics_binding = {};
-        graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WAYLAND_KHR;
-        graphics_binding.display = wayland_display;
-
-        /*XRBRIDGE_DEBUG_OUT("Using platform: X11 (XCB)");
-        // NOTE: This is hard-coded to use screen 0.
-        xcb_connection_t* xcb_connection = xcb_connect(nullptr, nullptr);
-
-        int attributes[] = {
-            GLX_X_RENDERABLE, True,
-            GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-            GLX_RED_SIZE, 8,
-            GLX_GREEN_SIZE, 8,
-            GLX_BLUE_SIZE, 8,
-            GLX_DEPTH_SIZE, 24,
+        // TODO: Do not make these hard-coded.
+        int attributes[16] = {
+            GLX_RED_SIZE, 1,
+            GLX_GREEN_SIZE, 1,
+            GLX_BLUE_SIZE, 1,
+            GLX_DOUBLEBUFFER, 1,
+            GLX_DEPTH_SIZE, 1,
             None
         };
 
-        GLXFBConfig* configs = glXChooseFBConfig(xcb_connection, 0, attributes);
+        int number_of_configs = 0;
+        GLXFBConfig fbconfig = glXChooseFBConfig(
+            glXGetCurrentDisplay(),
+            0, // Screen
+            attributes,
+            &number_of_configs // TODO: Make sure this is at least 1.
+        )[0];
 
-        if (configs == nullptr)
-        {
-            throw std::runtime_error();
-        }
-
-        XrGraphicsBindingOpenGLXcbKHR graphics_binding = {};
-        graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XCB_KHR;
-        graphics_binding.connection = xcb_connextion;
-        graphics_binding.screenNumber = 0; // NOTE: This is hard-coded to use screen 0.
-        graphics_binding.fbconfigid = configs[0];*/
-
-        // TODO: Do I need to xcb_disconnect?
+        XrGraphicsBindingOpenGLXlibKHR graphics_binding = {};
+        graphics_binding.type =  XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
+        graphics_binding.xDisplay = glXGetCurrentDisplay();
+        graphics_binding.visualid = 735; // TODO: Make this not hard-coded.
+        graphics_binding.glxFBConfig = fbconfig;
+        graphics_binding.glxDrawable = glXGetCurrentDrawable();
+        graphics_binding.glxContext = glXGetCurrentContext();
 	#endif
 
 
