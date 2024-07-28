@@ -59,7 +59,7 @@ namespace XrBridge
 	enum class Eye { LEFT, RIGHT };
 
 	// NOTE: Change here the signature of the user-provided render function.
-	typedef std::function<void(const Eye eye, const std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix)> render_function_t;
+	typedef std::function<void(const Eye eye, const std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix, const uint32_t width, const uint32_t height)> render_function_t;
 
 	/**
 	 * A simple OpenXR wrapper to easily develop VR applications.

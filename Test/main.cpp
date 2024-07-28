@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 		// This user-defined function will be called as many times as necessary
 		//  (probably twice, once for each eye; it could also not be called at all)
 		//  to render each view.
-		const bool did_render = xrbridge.render([&] (const XrBridge::Eye eye, std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix) {
+		const bool did_render = xrbridge.render([&] (const XrBridge::Eye eye, std::shared_ptr<Fbo> fbo, const glm::mat4 projection_matrix, const glm::mat4 view_matrix, const uint32_t width, const uint32_t height) {
 			// Bind the FBO and set the viewport. This is not done automatically
 			//  by XrBridge, so we must do it ourselves!
 			fbo->render();
@@ -104,7 +104,7 @@ int main(int argc, char** argv)
 			if (eye == XrBridge::Eye::LEFT)
 			{
 				glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-				glBlitFramebuffer(0, 0, 800, 600, 0, 0, 800, 600, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+				glBlitFramebuffer(0, 0, width, height, 0, 0, 800, 600, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 			}
 		});
 

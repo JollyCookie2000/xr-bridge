@@ -569,7 +569,7 @@ bool XrBridge::XrBridge::render(const render_function_t render_function)
 
 			const std::shared_ptr<Fbo> fbo = current_swapchain.framebuffers.at(image_index);
 
-			render_function(eye, fbo, projection_matrix, view_matrix);
+			render_function(eye, fbo, projection_matrix, view_matrix, current_swapchain.width, current_swapchain.height);
 
 			XrSwapchainImageReleaseInfo swapchain_image_release_info = {};
 			swapchain_image_release_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO;
