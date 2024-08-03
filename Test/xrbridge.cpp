@@ -15,7 +15,6 @@
 
 /* ========== CONFIGURATION ========== */
 
-
 #include "xrbridge.hpp"
 
 #include <iostream>
@@ -25,6 +24,7 @@
     #include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
 #endif
 #ifdef XRBRIDGE_PLATFORM_X11
+    #include <GL/freeglut_globals.h>
     #include <GL/glx.h>
     #include <X11/Xlib.h>
 #endif
@@ -284,28 +284,26 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
     #ifdef XRBRIDGE_PLATFORM_X11
         XRBRIDGE_DEBUG_OUT("Using platform: X11 (XLIB)");
 
-		// TODO: Do not make these hard-coded.
-		int attributes[16] = {
-			GLX_RED_SIZE, 1,
-			GLX_GREEN_SIZE, 1,
-			GLX_BLUE_SIZE, 1,
-			GLX_DOUBLEBUFFER, 1,
-			GLX_DEPTH_SIZE, 1,
-			None
-		};
-
         int number_of_configs = 0;
-        GLXFBConfig fbconfig = glXChooseFBConfig(
+        GLXFBConfig* fbconfigs = glXChooseFBConfig(
             glXGetCurrentDisplay(),
             0, // Screen
-            attributes,
-            &number_of_configs // TODO: Make sure this is at least 1.
-        )[0];
+            freeglut_attributes,
+            &number_of_configs
+        );
+
+        if (number_of_configs < 1)
+        {
+            XRBRIDGE_ERROR_OUT("Failed to get FBConfigs.");
+            return false;
+        }
+
+        GLXFBConfig fbconfig = fbconfigs[0];
 
         XrGraphicsBindingOpenGLXlibKHR graphics_binding = {};
         graphics_binding.type =  XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
         graphics_binding.xDisplay = glXGetCurrentDisplay();
-        graphics_binding.visualid = 735; // TODO: Make this not hard-coded.
+        graphics_binding.visualid = freeglut_visualid;
         graphics_binding.glxFBConfig = fbconfig;
         graphics_binding.glxDrawable = glXGetCurrentDrawable();
         graphics_binding.glxContext = glXGetCurrentContext();
