@@ -1,3 +1,21 @@
+/* ========== CONFIGURATION ========== */
+
+// The near and far clipping planes for generate the perspective projection matrix.
+#define XRBRIDGE_CONFIG_NEAR_CLIPPING_PLANE 0.1f
+#define XRBRIDGE_CONFIG_FAR_CLIPPING_PLANE 65'535.0f
+
+// The format to be used to generate the FBOs.
+// https://steamcommunity.com/app/250820/discussions/8/3121550424355682585/
+// Apparently, SteamVR on Linux (at least up to version 2.7.4) only supports GL_SRGB8.
+#define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS GL_RGBA16F
+#define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX   GL_SRGB8
+
+// https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
+#define XRBRIDGE_CONFIG_SPACE XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_LOCAL
+
+/* ========== CONFIGURATION ========== */
+
+
 #include "xrbridge.hpp"
 
 #include <iostream>
@@ -48,6 +66,13 @@
 #define XRBRIDGE_WARNING_OUT( message ) { std::cout << "[XrBridge][WARNING] " << message << std::endl; }
 
 #define NULL_FLAG 0
+
+#ifdef XRBRIDGE_PLATFORM_WINDOWS
+    #define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS
+#endif
+#ifdef XRBRIDGE_PLATFORM_X11
+    #define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX
+#endif
 
 static bool check_openxr_result(const XrInstance instance, const XrResult result)
 {
@@ -259,15 +284,15 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
     #ifdef XRBRIDGE_PLATFORM_X11
         XRBRIDGE_DEBUG_OUT("Using platform: X11 (XLIB)");
 
-        // TODO: Do not make these hard-coded.
-        int attributes[16] = {
-            GLX_RED_SIZE, 1,
-            GLX_GREEN_SIZE, 1,
-            GLX_BLUE_SIZE, 1,
-            GLX_DOUBLEBUFFER, 1,
-            GLX_DEPTH_SIZE, 1,
-            None
-        };
+		// TODO: Do not make these hard-coded.
+		int attributes[16] = {
+			GLX_RED_SIZE, 1,
+			GLX_GREEN_SIZE, 1,
+			GLX_BLUE_SIZE, 1,
+			GLX_DOUBLEBUFFER, 1,
+			GLX_DEPTH_SIZE, 1,
+			None
+		};
 
         int number_of_configs = 0;
         GLXFBConfig fbconfig = glXChooseFBConfig(
@@ -562,8 +587,7 @@ bool XrBridge::XrBridge::render(const render_function_t render_function)
 			const Eye eye = view_index == 0 ? Eye::LEFT : Eye::RIGHT;
 			const float aspect_ratio = static_cast<float>(current_swapchain.width) / static_cast<float>(current_swapchain.height);
 
-			// TODO: Make the clipping planes configurable.
-			const glm::mat4 projection_matrix = glm::perspective(current_view.fov.angleUp - current_view.fov.angleDown, aspect_ratio, 0.1f, 100'000.0f);
+			const glm::mat4 projection_matrix = glm::perspective(current_view.fov.angleUp - current_view.fov.angleDown, aspect_ratio, XRBRIDGE_CONFIG_NEAR_CLIPPING_PLANE, XRBRIDGE_CONFIG_FAR_CLIPPING_PLANE);
 			glm::quat quaternion(current_view.pose.orientation.w, current_view.pose.orientation.x, current_view.pose.orientation.y, current_view.pose.orientation.z);
 			const glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position)) * glm::mat4_cast(quaternion);
 
@@ -631,15 +655,7 @@ bool XrBridge::XrBridge::begin_session()
 		// TODO: Is XR_SWAPCHAIN_USAGE_SAMPLED_BIT actually necessary?
 		// TODO: Apparently, OpenGL ignores these. If so, remove them.
 		swapchain_create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-		// https://steamcommunity.com/app/250820/discussions/8/3121550424355682585/
-		// TODO: Improve the handling of the swapchain format.
-		#ifdef XRBRIDGE_PLATFORM_WINDOWS
-            swapchain_create_info.format = GL_RGBA16F; // TODO: Allow the user to choose this.
-        #endif
-        #ifdef XRBRIDGE_PLATFORM_X11
-            // Apparently SteamVR on Linux (at least up to version 2.7.4) only supports SRGB.
-            swapchain_create_info.format = GL_SRGB8; // TODO: Allow the user to choose this.
-		#endif
+        swapchain_create_info.format = XRBRIDGE_SWAPCHAIN_FORMAT;
 		swapchain_create_info.width = view_configuration_view.recommendedImageRectWidth;
 		swapchain_create_info.height = view_configuration_view.recommendedImageRectHeight;
 		swapchain_create_info.sampleCount = view_configuration_view.recommendedSwapchainSampleCount;
@@ -675,11 +691,8 @@ bool XrBridge::XrBridge::begin_session()
 	// Create the reference space.
 	XrReferenceSpaceCreateInfo reference_space_info = {};
 	reference_space_info.type = XrStructureType::XR_TYPE_REFERENCE_SPACE_CREATE_INFO;
-	// NOTE: The LOCAL reference space refers to the user in the sitting position.
-	//  More info: https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
-	// TODO: Make this configurable.
-	//reference_space_info.referenceSpaceType = XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_STAGE;
-	reference_space_info.referenceSpaceType = XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_LOCAL;
+	// https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
+	reference_space_info.referenceSpaceType = XRBRIDGE_CONFIG_SPACE;
 	// Here we set the offset to the origin of the tracking space. In this case, we keep the origin were it is.
 	reference_space_info.poseInReferenceSpace = {
 		{ 0.0f, 0.0f, 0.0f, 1.0f, }, // Orientation
