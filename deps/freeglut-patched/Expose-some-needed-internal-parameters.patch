@@ -1,0 +1,47 @@
+diff --git a/src/x11/fg_window_x11.c b/src/x11/fg_window_x11.c
+index f31a845f..9269f5ef 100644
+--- a/src/x11/fg_window_x11.c
++++ b/src/x11/fg_window_x11.c
+@@ -44,6 +44,8 @@
+ #define HOST_NAME_MAX	255
+ #endif
+ 
++#include <GL/freeglut_globals.h>
++
+ /* Motif window hints, only define needed ones */
+ typedef struct
+ {
+@@ -430,6 +432,8 @@ done_retry:
+ 		window->State.Visible = GL_TRUE;
+ 	}
+ 
++	freeglut_visualid = visualInfo->visualid;
++
+ #ifdef USE_FBCONFIG
+ 	/* on the non-fbconfig path, the visualInfo pointer is the one owned by the
+ 	 * window, so delete only if we got this from glXGetVisualFromFBConfig
+diff --git a/src/x11/fg_window_x11_glx.c b/src/x11/fg_window_x11_glx.c
+index 62291195..36d5cb55 100644
+--- a/src/x11/fg_window_x11_glx.c
++++ b/src/x11/fg_window_x11_glx.c
+@@ -30,6 +30,8 @@
+ #include <GL/freeglut.h>
+ #include "fg_internal.h"
+ 
++#include <GL/freeglut_globals.h>
++
+ /* pushing attribute/value pairs into an array */
+ #define ATTRIB(a) attributes[where++]=(a)
+ #define ATTRIB_VAL(a,v) {ATTRIB(a); ATTRIB(v);}
+@@ -103,6 +105,11 @@ int fghChooseConfig(GLXFBConfig* fbconfig)
+   /* Push a terminator at the end of the list */
+   ATTRIB( None );
+ 
++  for (unsigned int i = 0; i < 100; ++i)
++  {
++    freeglut_attributes[i] = attributes[i];
++  }
++
+     {
+         GLXFBConfig * fbconfigArray;  /*  Array of FBConfigs  */
+         int fbconfigArraySize;        /*  Number of FBConfigs in the array  */
