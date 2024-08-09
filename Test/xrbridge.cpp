@@ -627,7 +627,11 @@ bool XrBridge::XrBridge::begin_session()
 	std::vector<XrViewConfigurationView> view_configuration_views(view_count, { XR_TYPE_VIEW_CONFIGURATION_VIEW });
 	RETURN_FALSE_ON_OXR_ERROR(xrEnumerateViewConfigurationViews(this->instance, this->system_id, XrViewConfigurationType::XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, view_count, &view_count, view_configuration_views.data()), "Faield to enumerate view configuration views.");
 
-	// TODO: Return an error if the number of views is not 2.
+	if (view_count != 2)
+	{
+		XRBRIDGE_ERROR_OUT("OpenXR is reporting " << view_count << " views, but only 2 are supported.");
+		return false;
+	}
 
 	for (const auto& view_configuration_view : view_configuration_views)
 	{
