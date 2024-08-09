@@ -24,9 +24,9 @@
     #include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
 #endif
 #ifdef XRBRIDGE_PLATFORM_X11
-    #include <GL/freeglut_globals.h>
-    #include <GL/glx.h>
-    #include <X11/Xlib.h>
+	#include <GL/freeglut_globals.h>
+	#include <GL/glx.h>
+	#include <X11/Xlib.h>
 #endif
 
 #include <GL/freeglut.h>
@@ -36,29 +36,29 @@
 
 
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
-    #define XR_USE_PLATFORM_WIN32
+	#define XR_USE_PLATFORM_WIN32
 #endif
 #ifdef XRBRIDGE_PLATFORM_X11
-    #define XR_USE_PLATFORM_XLIB
+	#define XR_USE_PLATFORM_XLIB
 #endif
 
 #define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
 
 
-#define RETURN_FALSE_ON_OXR_ERROR( function, message )            \
-    if (check_openxr_result( this->instance, function ) == false) \
-    {                                                             \
-        XRBRIDGE_ERROR_OUT(message);                              \
-        return false;                                             \
-    }
+#define RETURN_FALSE_ON_OXR_ERROR( function, message ) \
+	if (check_openxr_result( this->instance, function ) == false) \
+	{ \
+		XRBRIDGE_ERROR_OUT(message); \
+		return false; \
+	}
 
 #define XRV_TO_GV( xrv ) glm::vec3(xrv.x, xrv.y, xrv.z)
 
 #ifdef XRBRIDGE_DEBUG
-#define XRBRIDGE_DEBUG_OUT( message ) { std::cout << "[XrBridge][DEBUG] " << message << std::endl; }
+	#define XRBRIDGE_DEBUG_OUT( message ) { std::cout << "[XrBridge][DEBUG] " << message << std::endl; }
 #else
-#define XRBRIDGE_DEBUG_OUT( message ) ;
+	#define XRBRIDGE_DEBUG_OUT( message ) ;
 #endif
 
 #define XRBRIDGE_ERROR_OUT( message ) { std::cerr << "[XrBridge][ERROR] " << message << std::endl; }
@@ -68,10 +68,10 @@
 #define NULL_FLAG 0
 
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
-    #define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS
+	#define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS
 #endif
 #ifdef XRBRIDGE_PLATFORM_X11
-    #define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX
+	#define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX
 #endif
 
 static bool check_openxr_result(const XrInstance instance, const XrResult result)
@@ -147,7 +147,7 @@ static bool is_extension_supported(const std::string& extension_name)
 }
 
 XrBridge::XrBridge::XrBridge() :
-    is_currently_rendering_flag { false },
+	is_currently_rendering_flag { false },
 	is_already_initialized_flag { false },
 	is_already_deinitialized_flag { false },
 	instance { XR_NULL_HANDLE },
@@ -161,7 +161,7 @@ XrBridge::XrBridge::XrBridge() :
 
 bool XrBridge::XrBridge::init(const std::string& application_name)
 {
-    if (this->is_already_deinitialized_flag)
+	if (this->is_already_deinitialized_flag)
 	{
 		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
 		throw std::runtime_error("This object has already been de-initialized!");
@@ -264,49 +264,49 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 
 	// Platform-specific code.
 	#ifdef XRBRIDGE_PLATFORM_WINDOWS
-        XRBRIDGE_DEBUG_OUT("Using platform: Windows (Win32)");
+		XRBRIDGE_DEBUG_OUT("Using platform: Windows (Win32)");
 
-        const HDC hdc = wglGetCurrentDC();
-        const HGLRC hglrc = wglGetCurrentContext();
-        if (hdc == NULL || hglrc == NULL)
-        {
-            XRBRIDGE_ERROR_OUT("Failed to get native OpenGL context.");
-            return false;
-        }
+		const HDC hdc = wglGetCurrentDC();
+		const HGLRC hglrc = wglGetCurrentContext();
+		if (hdc == NULL || hglrc == NULL)
+		{
+			XRBRIDGE_ERROR_OUT("Failed to get native OpenGL context.");
+			return false;
+		}
 
-        // Create the OpenGL binding.
-        // NOTE: Change this to use another graphics API.
-        XrGraphicsBindingOpenGLWin32KHR graphics_binding = {};
-        graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
-        graphics_binding.hDC = hdc;
-        graphics_binding.hGLRC = hglrc;
-    #endif
-    #ifdef XRBRIDGE_PLATFORM_X11
-        XRBRIDGE_DEBUG_OUT("Using platform: X11 (XLIB)");
+		// Create the OpenGL binding.
+		// NOTE: Change this to use another graphics API.
+		XrGraphicsBindingOpenGLWin32KHR graphics_binding = {};
+		graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
+		graphics_binding.hDC = hdc;
+		graphics_binding.hGLRC = hglrc;
+	#endif
+	#ifdef XRBRIDGE_PLATFORM_X11
+		XRBRIDGE_DEBUG_OUT("Using platform: X11 (XLIB)");
 
-        int number_of_configs = 0;
-        GLXFBConfig* fbconfigs = glXChooseFBConfig(
-            glXGetCurrentDisplay(),
-            0, // Screen
-            freeglut_attributes,
-            &number_of_configs
-        );
+		int number_of_configs = 0;
+		GLXFBConfig* fbconfigs = glXChooseFBConfig(
+			glXGetCurrentDisplay(),
+			0, // Screen
+			freeglut_attributes,
+			&number_of_configs
+		);
 
-        if (number_of_configs < 1)
-        {
-            XRBRIDGE_ERROR_OUT("Failed to get FBConfigs.");
-            return false;
-        }
+		if (number_of_configs < 1)
+		{
+			XRBRIDGE_ERROR_OUT("Failed to get FBConfigs.");
+			return false;
+		}
 
-        GLXFBConfig fbconfig = fbconfigs[0];
+		GLXFBConfig fbconfig = fbconfigs[0];
 
-        XrGraphicsBindingOpenGLXlibKHR graphics_binding = {};
-        graphics_binding.type =  XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
-        graphics_binding.xDisplay = glXGetCurrentDisplay();
-        graphics_binding.visualid = freeglut_visualid;
-        graphics_binding.glxFBConfig = fbconfig;
-        graphics_binding.glxDrawable = glXGetCurrentDrawable();
-        graphics_binding.glxContext = glXGetCurrentContext();
+		XrGraphicsBindingOpenGLXlibKHR graphics_binding = {};
+		graphics_binding.type =  XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
+		graphics_binding.xDisplay = glXGetCurrentDisplay();
+		graphics_binding.visualid = freeglut_visualid;
+		graphics_binding.glxFBConfig = fbconfig;
+		graphics_binding.glxDrawable = glXGetCurrentDrawable();
+		graphics_binding.glxContext = glXGetCurrentContext();
 	#endif
 
 
@@ -445,32 +445,32 @@ bool XrBridge::XrBridge::update()
 
 			if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_READY)
 			{
-                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_READY.");
+				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_READY.");
 
 				if (this->begin_session() == false)
 				{
-                    XRBRIDGE_ERROR_OUT("Failed to begin OpenXR session.");
-                    return false;
+					XRBRIDGE_ERROR_OUT("Failed to begin OpenXR session.");
+					return false;
 				}
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_STOPPING)
 			{
-                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_STOPPING.");
+				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_STOPPING.");
 
 				if (this->end_session() == false)
 				{
-                    XRBRIDGE_ERROR_OUT("Failed to end OpenXR session.");
-                    return false;
+					XRBRIDGE_ERROR_OUT("Failed to end OpenXR session.");
+					return false;
 				}
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_LOSS_PENDING)
 			{
-                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_LOSS_PENDING.");
+				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_LOSS_PENDING.");
 				// TODO: Exit the application.
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_EXITING)
 			{
-                XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_EXITING.");
+				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_EXITING.");
 				// TODO: Exit the application.
 			}
 
@@ -653,7 +653,7 @@ bool XrBridge::XrBridge::begin_session()
 		// TODO: Is XR_SWAPCHAIN_USAGE_SAMPLED_BIT actually necessary?
 		// TODO: Apparently, OpenGL ignores these. If so, remove them.
 		swapchain_create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
-        swapchain_create_info.format = XRBRIDGE_SWAPCHAIN_FORMAT;
+		swapchain_create_info.format = XRBRIDGE_SWAPCHAIN_FORMAT;
 		swapchain_create_info.width = view_configuration_view.recommendedImageRectWidth;
 		swapchain_create_info.height = view_configuration_view.recommendedImageRectHeight;
 		swapchain_create_info.sampleCount = view_configuration_view.recommendedSwapchainSampleCount;
@@ -676,8 +676,8 @@ bool XrBridge::XrBridge::begin_session()
 
 			if (fbo == nullptr)
 			{
-                XRBRIDGE_ERROR_OUT("Failed to create FBO.");
-                return false;
+				XRBRIDGE_ERROR_OUT("Failed to create FBO.");
+				return false;
 			}
 
 			swapchain.framebuffers.push_back(fbo);

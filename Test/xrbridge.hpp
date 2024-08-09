@@ -20,7 +20,6 @@
 
 namespace XrBridge
 {
-	// TODO: This should not be accessible from outside.
 	// This is used to easily tie together swapchains with their framebuffer IDs and sizes.
 	/**
 	 * This is an internal struct and **must not** be used!
