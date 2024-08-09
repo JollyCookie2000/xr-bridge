@@ -413,25 +413,13 @@ bool XrBridge::XrBridge::update()
 			break;
 		case XrStructureType::XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
 			// https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrEventDataInstanceLossPending.html
-			// TODO: Should this case be handled? Or can I just stop working?
-			// The OpenXR instance is about to disconnect. This should not normally happen.
-			std::cout << "[WARNING] The OpenXR instance is about to be lost. Recovery from this is not supported." << std::endl;
-			RETURN_FALSE_ON_OXR_ERROR(xrDestroyInstance(this->instance), "Faild to destroy instance.");
-			this->instance = XR_NULL_HANDLE;
-			break;
-		case XrStructureType::XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
-		{
-			// TODO: Should this be supported?
-			const XrEventDataReferenceSpaceChangePending* reference_space_change = reinterpret_cast<XrEventDataReferenceSpaceChangePending*>(&event_buffer);
-			if (reference_space_change->session != this->session)
-			{
-				break;
-			}
-
-			XRBRIDGE_DEBUG_OUT("XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING");
-
-			break;
-		}
+			// As per the documentation: "...indicates that the application is
+			// about to lose the indicated XrInstance..." and "...typically
+			// occurs to make way for a replacement of the underlying runtime...".
+			// In this case, we just throw an error; the user should just restart
+			// the application.
+			XRBRIDGE_ERROR_OUT("The OpenXR instance is about to disconnect.");
+			return false;
 		case XrStructureType::XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
 		{
 			const XrEventDataSessionStateChanged* session_state_changed = reinterpret_cast<XrEventDataSessionStateChanged*>(&event_buffer);
@@ -445,7 +433,7 @@ bool XrBridge::XrBridge::update()
 
 			if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_READY)
 			{
-				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_READY.");
+				XRBRIDGE_DEBUG_OUT("OpenXR session is beginning.");
 
 				if (this->begin_session() == false)
 				{
@@ -455,7 +443,7 @@ bool XrBridge::XrBridge::update()
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_STOPPING)
 			{
-				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_STOPPING.");
+				XRBRIDGE_DEBUG_OUT("OpenXR session is stopping.");
 
 				if (this->end_session() == false)
 				{
@@ -465,13 +453,13 @@ bool XrBridge::XrBridge::update()
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_LOSS_PENDING)
 			{
-				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_LOSS_PENDING.");
-				// TODO: Exit the application.
+				XRBRIDGE_ERROR_OUT("The OpenXR session is about to be lost.");
+				return false;
 			}
 			else if (session_state_changed->state == XrSessionState::XR_SESSION_STATE_EXITING)
 			{
-				XRBRIDGE_DEBUG_OUT("New session state: XR_SESSION_STATE_EXITING.");
-				// TODO: Exit the application.
+				XRBRIDGE_ERROR_OUT("The OpenXR session is about to exit.");
+				return false;
 			}
 
 			break;
