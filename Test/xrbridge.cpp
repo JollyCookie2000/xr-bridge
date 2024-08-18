@@ -30,7 +30,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-
+// Choose the OpenXR platform.
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
 	#define XR_USE_PLATFORM_WIN32
 #endif
@@ -41,7 +41,7 @@
 #define XR_USE_GRAPHICS_API_OPENGL
 #include <openxr/openxr_platform.h>
 
-
+// Macro to easily manage errors returned from OpenXR functions.
 #define RETURN_FALSE_ON_OXR_ERROR( function, message ) \
 	if (check_openxr_result( this->instance, function ) == false) \
 	{ \
@@ -49,20 +49,48 @@
 		return false; \
 	}
 
+#define XRBRIDGE_CHECK_RENDERING( value ) \
+	if (this->is_currently_rendering_flag == value) \
+	{ \
+		XRBRIDGE_ERROR_OUT("You cannot call this function inside the render function!"); \
+		return false; \
+	}
+
+#define XRBRIDGE_CHECK_INITIALIZED(value) \
+	if (this->is_already_initialized_flag == value) \
+	{ \
+		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!"); \
+		return false; \
+	}
+
+#define XRBRIDGE_CHECK_DEINITIALIZED(value) \
+	if (this->is_already_deinitialized_flag == value) \
+	{ \
+		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!"); \
+		return false; \
+	}
+
+// Convert an OpenXR vector to a GLM vector.
 #define XRV_TO_GV( xrv ) glm::vec3(xrv.x, xrv.y, xrv.z)
 
 #ifdef XRBRIDGE_DEBUG
+	// Print a debug message to stdout.
 	#define XRBRIDGE_DEBUG_OUT( message ) { std::cout << "[XrBridge][DEBUG] " << message << std::endl; }
 #else
 	#define XRBRIDGE_DEBUG_OUT( message ) ;
 #endif
 
+// Print an error message to stderr.
 #define XRBRIDGE_ERROR_OUT( message ) { std::cerr << "[XrBridge][ERROR] " << message << std::endl; }
 
+// Print a warning message to the stdout.
 #define XRBRIDGE_WARNING_OUT( message ) { std::cout << "[XrBridge][WARNING] " << message << std::endl; }
 
+// This is just to disable some annoying warning about NULL.
 #define NULL_FLAG 0
 
+// Choose which swapchain format to use. This is done because, at the moment of writing this,
+// SteamVR on Linux supports different formats compared to Windows.
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
 	#define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS
 #endif
@@ -159,18 +187,9 @@ XrBridge::XrBridge::XrBridge() :
 
 bool XrBridge::XrBridge::init(const std::string& application_name)
 {
-	if (this->is_already_deinitialized_flag)
-	{
-		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		return false;
-	}
+	XRBRIDGE_CHECK_RENDERING(true);
 
-	if (this->is_already_initialized_flag)
-	{
-		XRBRIDGE_ERROR_OUT("This object has already been initialized!");
-		return false;
-	}
-
+	XRBRIDGE_CHECK_DEINITIALIZED(true);
 
 	XRBRIDGE_DEBUG_OUT("OpenXR version: " << XR_VERSION_MAJOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_MINOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_PATCH(XR_CURRENT_API_VERSION));
 
@@ -329,23 +348,11 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 
 bool XrBridge::XrBridge::free()
 {
-	if (this->is_already_initialized_flag == false)
-	{
-		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
-		return false;
-	}
+	XRBRIDGE_CHECK_INITIALIZED(false);
 
-	if (this->is_currently_rendering_flag)
-	{
-		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render function!");
-		return false;
-	}
+	XRBRIDGE_CHECK_RENDERING(true);
 
-	if (this->is_already_deinitialized_flag)
-	{
-		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		return false;
-	}
+	XRBRIDGE_CHECK_DEINITIALIZED(true);
 
 	this->is_already_deinitialized_flag = true;
 
@@ -371,23 +378,11 @@ bool XrBridge::XrBridge::free()
 
 bool XrBridge::XrBridge::update()
 {
-	if (this->is_currently_rendering_flag)
-	{
-		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render function!");
-		return false;
-	}
+	XRBRIDGE_CHECK_RENDERING(true);
 
-	if (this->is_already_initialized_flag == false)
-	{
-		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
-		return false;
-	}
+	XRBRIDGE_CHECK_INITIALIZED(false);
 
-	if (this->is_already_deinitialized_flag)
-	{
-		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		return false;
-	}
+	XRBRIDGE_CHECK_DEINITIALIZED(true);
 
 	while (true)
 	{
@@ -477,23 +472,11 @@ bool XrBridge::XrBridge::update()
 
 bool XrBridge::XrBridge::render(const render_function_t render_function)
 {
-	if (this->is_currently_rendering_flag)
-	{
-		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render function!");
-		return false;
-	}
+	XRBRIDGE_CHECK_RENDERING(true);
 
-	if (this->is_already_initialized_flag == false)
-	{
-		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
-		return false;
-	}
+	XRBRIDGE_CHECK_INITIALIZED(false);
 
-	if (this->is_already_deinitialized_flag)
-	{
-		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		return false;
-	}
+	XRBRIDGE_CHECK_DEINITIALIZED(true);
 
 	this->is_currently_rendering_flag = true;
 
