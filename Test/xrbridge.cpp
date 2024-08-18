@@ -162,13 +162,13 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	if (this->is_already_deinitialized_flag)
 	{
 		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		throw std::runtime_error("This object has already been de-initialized!");
+		return false;
 	}
 
 	if (this->is_already_initialized_flag)
 	{
 		XRBRIDGE_ERROR_OUT("This object has already been initialized!");
-		throw std::runtime_error("This object has already been initialized!");
+		return false;
 	}
 
 
@@ -327,59 +327,66 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	return true;
 }
 
-void XrBridge::XrBridge::free()
+bool XrBridge::XrBridge::free()
 {
 	if (this->is_already_initialized_flag == false)
 	{
 		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
-		throw std::runtime_error("This object has not been initialized yet!");
+		return false;
 	}
 
 	if (this->is_currently_rendering_flag)
 	{
-		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render fucntion!");
-		throw std::runtime_error("You cannot call this method inside the render fucntion!");
+		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render function!");
+		return false;
 	}
 
 	if (this->is_already_deinitialized_flag)
 	{
 		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		throw std::runtime_error("This object has already been de-initialized!");
+		return false;
 	}
 
 	this->is_already_deinitialized_flag = true;
 
-	this->end_session();
+	if (this->end_session() == false)
+	{
+		return false;
+	}
 
 	if (xrDestroySession(this->session) != XrResult::XR_SUCCESS)
 	{
 		XRBRIDGE_DEBUG_OUT("Failed to destroy session.");
+		return false;
 	}
 
 	if (xrDestroyInstance(this->instance) != XrResult::XR_SUCCESS)
 	{
 		XRBRIDGE_DEBUG_OUT("Failed to destroy instance.");
+		return false;
 	}
+
+	return true;
 }
 
 bool XrBridge::XrBridge::update()
 {
 	if (this->is_currently_rendering_flag)
 	{
-		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render fucntion!");
-		throw std::runtime_error("You cannot call this method inside the render fucntion!");
+		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render function!");
+		return false;
 	}
 
 	if (this->is_already_initialized_flag == false)
 	{
 		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
-		throw std::runtime_error("This object has not been initialized yet!");
+		return false;
 	}
 
 	if (this->is_already_deinitialized_flag)
 	{
 		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		throw std::runtime_error("This object has already been de-initialized!");
+		return false;
 	}
 
 	while (true)
@@ -414,7 +421,7 @@ bool XrBridge::XrBridge::update()
 			// As per the documentation: "...indicates that the application is
 			// about to lose the indicated XrInstance..." and "...typically
 			// occurs to make way for a replacement of the underlying runtime...".
-			// In this case, we just throw an error; the user should just restart
+			// In this case, we just generate an error; the user should just restart
 			// the application.
 			XRBRIDGE_ERROR_OUT("The OpenXR instance is about to disconnect.");
 			return false;
@@ -472,20 +479,20 @@ bool XrBridge::XrBridge::render(const render_function_t render_function)
 {
 	if (this->is_currently_rendering_flag)
 	{
-		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render fucntion!");
-		throw std::runtime_error("You cannot call this method inside the render fucntion!");
+		XRBRIDGE_ERROR_OUT("You cannot call this method inside the render function!");
+		return false;
 	}
 
 	if (this->is_already_initialized_flag == false)
 	{
 		XRBRIDGE_ERROR_OUT("This object has not been initialized yet!");
-		throw std::runtime_error("This object has not been initialized yet!");
+		return false;
 	}
 
 	if (this->is_already_deinitialized_flag)
 	{
 		XRBRIDGE_ERROR_OUT("This object has already been de-initialized!");
-		throw std::runtime_error("This object has already been de-initialized!");
+		return false;
 	}
 
 	this->is_currently_rendering_flag = true;

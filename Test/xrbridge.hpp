@@ -96,7 +96,7 @@ namespace XrBridge
 		 * You **must** call this method when you wish to terminate the OpenXR session.
 		 * You **must not** call any other method of this object after.
 		 */
-		void free(void);
+		bool free(void);
 
 		/**
 		 * Handle OpenXR events.
