@@ -1,9 +1,5 @@
 /* ========== CONFIGURATION ========== */
 
-// The near and far clipping planes for generate the perspective projection matrix.
-#define XRBRIDGE_CONFIG_NEAR_CLIPPING_PLANE 0.1f
-#define XRBRIDGE_CONFIG_FAR_CLIPPING_PLANE 65'535.0f
-
 // The format to be used to generate the FBOs.
 // https://steamcommunity.com/app/250820/discussions/8/3121550424355682585/
 // Apparently, SteamVR on Linux (at least up to version 2.7.4) only supports GL_SRGB8.
@@ -150,6 +146,8 @@ XrBridge::XrBridge::XrBridge() :
 	is_currently_rendering_flag { false },
 	is_already_initialized_flag { false },
 	is_already_deinitialized_flag { false },
+	near_clipping_plane { 0.1f },
+	far_clipping_plane { 65'536.0f },
 	instance { XR_NULL_HANDLE },
 	system_id { XR_NULL_SYSTEM_ID },
 	session { XR_NULL_HANDLE },
@@ -301,7 +299,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 		GLXFBConfig fbconfig = fbconfigs[0];
 
 		XrGraphicsBindingOpenGLXlibKHR graphics_binding = {};
-		graphics_binding.type =  XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
+		graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
 		graphics_binding.xDisplay = glXGetCurrentDisplay();
 		graphics_binding.visualid = freeglut_visualid;
 		graphics_binding.glxFBConfig = fbconfig;
@@ -573,7 +571,11 @@ bool XrBridge::XrBridge::render(const render_function_t render_function)
 			const Eye eye = view_index == 0 ? Eye::LEFT : Eye::RIGHT;
 			const float aspect_ratio = static_cast<float>(current_swapchain.width) / static_cast<float>(current_swapchain.height);
 
-			const glm::mat4 projection_matrix = glm::perspective(current_view.fov.angleUp - current_view.fov.angleDown, aspect_ratio, XRBRIDGE_CONFIG_NEAR_CLIPPING_PLANE, XRBRIDGE_CONFIG_FAR_CLIPPING_PLANE);
+			const glm::mat4 projection_matrix = glm::perspective(
+				current_view.fov.angleUp - current_view.fov.angleDown,
+				aspect_ratio,
+				this->near_clipping_plane,
+				this->far_clipping_plane);
 			glm::quat quaternion(current_view.pose.orientation.w, current_view.pose.orientation.x, current_view.pose.orientation.y, current_view.pose.orientation.z);
 			const glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position)) * glm::mat4_cast(quaternion);
 
@@ -611,6 +613,12 @@ bool XrBridge::XrBridge::render(const render_function_t render_function)
 	this->is_currently_rendering_flag = false;
 
 	return true;
+}
+
+void XrBridge::XrBridge::set_clipping_planes(const float near_clipping_plane, const float far_clipping_plane)
+{
+	this->near_clipping_plane = near_clipping_plane;
+	this->far_clipping_plane = far_clipping_plane;
 }
 
 bool XrBridge::XrBridge::begin_session()

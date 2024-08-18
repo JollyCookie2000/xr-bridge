@@ -61,6 +61,8 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
+	xrbridge.set_clipping_planes(0.1f, 65'536.0f);
+
 	// We hard-code a camera at position [0.0, 0.5, 0.5].
 	// NOTE: 1 unit = 1 meter
 	const glm::mat4 camera_matrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.5f, 0.5f));

@@ -137,6 +137,14 @@ namespace XrBridge
 		 * ```
 		 */
 		bool render(const render_function_t render_function);
+
+		/**
+		 * Sets the far and near clipping planes used to generate the projection matrix.
+		 *
+		 * @param near_clipping_plane The near clipping plane. Default: 0.1f
+		 * @param far_clipping_plane The far clipping plane. Default: 65'536.0f
+		 */
+		void set_clipping_planes(const float near_clipping_plane, const float far_clipping_plane);
 	private:
 		bool begin_session(void);
 		bool end_session(void);
@@ -154,6 +162,9 @@ namespace XrBridge
 
 		// This prevents the user from re-using this object after free() was called.
 		bool is_already_deinitialized_flag;
+
+		float near_clipping_plane;
+		float far_clipping_plane;
 
 		XrInstance instance;
 		XrSystemId system_id;
