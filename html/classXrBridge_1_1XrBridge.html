@@ -97,13 +97,17 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a837a9c39a9fb0527aa51ef2cc4a276c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ae325448ad3eb8f20f98dcca72f88c7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classXrBridge_1_1XrBridge.html#a0ae325448ad3eb8f20f98dcca72f88c7">free</a> (void)</td></tr>
 <tr class="separator:a0ae325448ad3eb8f20f98dcca72f88c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad6baea51edfdcfdf9f38d550076d92b4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classXrBridge_1_1XrBridge.html#ad6baea51edfdcfdf9f38d550076d92b4">update</a> (void)</td></tr>
-<tr class="separator:ad6baea51edfdcfdf9f38d550076d92b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acbabd206eea7ccc00ba967651492a372"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classXrBridge_1_1XrBridge.html#acbabd206eea7ccc00ba967651492a372">render</a> (const render_function_t render_function)</td></tr>
-<tr class="separator:acbabd206eea7ccc00ba967651492a372"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a81e113a9bca8e1c7827524bbff12de0b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classXrBridge_1_1XrBridge.html#a81e113a9bca8e1c7827524bbff12de0b">update</a> (void)</td></tr>
+<tr class="separator:a81e113a9bca8e1c7827524bbff12de0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a070774b08ac634fb11eaa472997798ac"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classXrBridge_1_1XrBridge.html#a070774b08ac634fb11eaa472997798ac">render</a> (const render_function_t render_function)</td></tr>
+<tr class="separator:a070774b08ac634fb11eaa472997798ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a01244fb8bf327dfcdb0a90c4feb401"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classXrBridge_1_1XrBridge.html#a3a01244fb8bf327dfcdb0a90c4feb401">set_clipping_planes</a> (const float near_clipping_plane, const float far_clipping_plane)</td></tr>
+<tr class="separator:a3a01244fb8bf327dfcdb0a90c4feb401"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>A simple OpenXR wrapper to easily develop VR applications. </p>
+<div class="textblock"><p>A simple OpenXR wrapper to easily develop VR applications.</p>
+<p>NOTE: This object is <b>not</b> thread safe!</p>
+<p>NOTE: After an error occurs, the object may be left in an invalid state! For this reason, it is encouraged to either restart the application or create a new instance of this object. Refer to the error message for more details. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a4a194959c340f9f480e392c79b0ac354" name="a4a194959c340f9f480e392c79b0ac354"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4a194959c340f9f480e392c79b0ac354">&#9670;&#160;</a></span>XrBridge()</h2>
@@ -141,7 +145,9 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Terminate the OpenXR session.</p>
-<p>You <b>must</b> call this method when you wish to terminate the OpenXR session. You <b>must not</b> call any other method of this object after. </p>
+<p>You <b>must</b> call this method when you wish to terminate the OpenXR session. You <b>must not</b> call any other method of this object after.</p>
+<p>This method <b>must not</b> be called inside the render function, before this object has been initialized or after this object has already been de-initialized.</p>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if the session has been terminated correctly, <code>false</code> otherwise. </dd></dl>
 
 </div>
 </div>
@@ -162,9 +168,10 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>Initialize the OpenXR session.</p>
 <p>This method <b>must</b> be called before calling any other method of this object.</p>
+<p>This method <b>must not</b> be called inside the render function, after this object has already been initialized or after this object has already been de-initialized.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">application_name</td><td>The title of the application. This is simply the name that the runtime will display. It's not that important. </td></tr>
+    <tr><td class="paramname">application_name</td><td>The title of the application. This is simply the name that the runtime will display. It's not that important.</td></tr>
   </table>
   </dd>
 </dl>
@@ -172,14 +179,14 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="acbabd206eea7ccc00ba967651492a372" name="acbabd206eea7ccc00ba967651492a372"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acbabd206eea7ccc00ba967651492a372">&#9670;&#160;</a></span>render()</h2>
+<a id="a070774b08ac634fb11eaa472997798ac" name="a070774b08ac634fb11eaa472997798ac"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a070774b08ac634fb11eaa472997798ac">&#9670;&#160;</a></span>render()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void XrBridge::XrBridge::render </td>
+          <td class="memname">bool XrBridge::XrBridge::render </td>
           <td>(</td>
           <td class="paramtype">const render_function_t&#160;</td>
           <td class="paramname"><em>render_function</em></td><td>)</td>
@@ -188,8 +195,11 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Render the scene to the VR headset.</p>
-<p>If the <code>render_function</code> function is too slow to execute, there could be visual glitches in the VR headset.</p>
+<p>If the <code>render_function</code> function is too slow to execute, there could be visual glitches. This depends on the runtime.</p>
 <p>You <b>must not</b> throw exceptions inside the <code>render_function</code> function. Doing so will leave this object in an invalid state.</p>
+<p>NOTE: Some functions cannot be called inside the <code>render_function</code>. Refer to their documentation for details.</p>
+<p>NOTE: The matrices received represent coordinates in meters.</p>
+<p>This method <b>must not</b> be called inside the render function, before this object has been initialized or after this object has been de-initialized.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">render_function</td><td>A user-provided render function. This function will be called automatically for each view and will receive the correct parameters to render the scene. Refer to the example project for the correct usage. <code>render_function</code> <b>must</b> have the following parameters in the specified order and return <code>void</code>:<ol type="1">
@@ -202,20 +212,57 @@ Public Member Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if no error occurred, <code>false</code> otherwise.</dd></dl>
 <p>Example using a lambda: </p><div class="fragment"><div class="line">xrbridge.render([&amp;] (<span class="keyword">const</span> XrBridge::Eye eye, std::shared_ptr&lt;Fbo&gt; fbo, <span class="keyword">const</span> glm::mat4 projection_matrix, <span class="keyword">const</span> glm::mat4 view_matrix) {</div>
 <div class="line">        <span class="comment">// Render stuff here.</span></div>
 <div class="line">}</div>
 </div><!-- fragment --> 
 </div>
 </div>
-<a id="ad6baea51edfdcfdf9f38d550076d92b4" name="ad6baea51edfdcfdf9f38d550076d92b4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad6baea51edfdcfdf9f38d550076d92b4">&#9670;&#160;</a></span>update()</h2>
+<a id="a3a01244fb8bf327dfcdb0a90c4feb401" name="a3a01244fb8bf327dfcdb0a90c4feb401"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3a01244fb8bf327dfcdb0a90c4feb401">&#9670;&#160;</a></span>set_clipping_planes()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void XrBridge::XrBridge::update </td>
+          <td class="memname">void XrBridge::XrBridge::set_clipping_planes </td>
+          <td>(</td>
+          <td class="paramtype">const float&#160;</td>
+          <td class="paramname"><em>near_clipping_plane</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const float&#160;</td>
+          <td class="paramname"><em>far_clipping_plane</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Sets the far and near clipping planes used to generate the projection matrix.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">near_clipping_plane</td><td>The near clipping plane. Default: 0.1f </td></tr>
+    <tr><td class="paramname">far_clipping_plane</td><td>The far clipping plane. Default: 65'536.0f </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a81e113a9bca8e1c7827524bbff12de0b" name="a81e113a9bca8e1c7827524bbff12de0b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a81e113a9bca8e1c7827524bbff12de0b">&#9670;&#160;</a></span>update()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool XrBridge::XrBridge::update </td>
           <td>(</td>
           <td class="paramtype">void&#160;</td>
           <td class="paramname"></td><td>)</td>
@@ -224,7 +271,9 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Handle OpenXR events.</p>
-<p>This method <b>must</b> be called immediately before each call to the <code><a class="el" href="classXrBridge_1_1XrBridge.html#acbabd206eea7ccc00ba967651492a372">render()</a></code> method. </p>
+<p>This method <b>must</b> be called immediately before each call to the <code><a class="el" href="classXrBridge_1_1XrBridge.html#a070774b08ac634fb11eaa472997798ac">render()</a></code> method.</p>
+<p>This method <b>must not</b> be called inside the render function, before this object has been initialized or after this object has been de-initialized.</p>
+<dl class="section return"><dt>Returns</dt><dd><code>true</code> if no error occurred, <code>false</code> otherwise. </dd></dl>
 
 </div>
 </div>

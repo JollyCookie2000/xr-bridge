@@ -1,8 +1,7 @@
 #pragma once
 
 /*
- * For the OpenXR API documentation:
- * 	https://registry.khronos.org/OpenXR/specs/1.1/man/html/FUNCTION_OR_STRUCT.html
+ * For the OpenXR API documentation: https://registry.khronos.org/OpenXR/specs/1.0/man/html/FUNCTION_OR_STRUCT.html
  */
 
 #include <functional>
@@ -62,6 +61,12 @@ namespace XrBridge
 
 	/**
 	 * A simple OpenXR wrapper to easily develop VR applications.
+	 *
+	 * NOTE: This object is **not** thread safe!
+	 *
+	 * NOTE: After an error occurs, the object may be left in an invalid state!
+	 * For this reason, it is encouraged to either restart the application or
+	 * create a new instance of this object. Refer to the error message for more details.
 	 */
 	class XrBridge
 	{
@@ -83,8 +88,12 @@ namespace XrBridge
 		 *
 		 * This method **must** be called before calling any other method of this object.
 		 *
+		 * This method **must not** be called inside the render function, after this object
+		 * has already been initialized or after this object has already been de-initialized.
+		 *
 		 * @param application_name The title of the application. This is simply the name
 		 * that the runtime will display. It's not that important.
+		 *
 		 * @return `true` if the session has been initialized correctly, `false`
 		 * otherwise.
 		 */
@@ -95,6 +104,12 @@ namespace XrBridge
 		 *
 		 * You **must** call this method when you wish to terminate the OpenXR session.
 		 * You **must not** call any other method of this object after.
+		 *
+		 * This method **must not** be called inside the render function, before this object
+		 * has been initialized or after this object has already been de-initialized.
+		 *
+		 * @return `true` if the session has been terminated correctly, `false`
+		 * otherwise.
 		 */
 		bool free(void);
 
@@ -104,6 +119,9 @@ namespace XrBridge
 		 * This method **must** be called immediately before each call to the `render()`
 		 * method.
 		 *
+		 * This method **must not** be called inside the render function, before this object
+		 * has been initialized or after this object has been de-initialized.
+		 *
 		 * @return `true` if no error occurred, `false` otherwise.
 		 */
 		bool update(void);
@@ -112,10 +130,18 @@ namespace XrBridge
 		 * Render the scene to the VR headset.
 		 *
 		 * If the `render_function` function is too slow to execute, there could be
-		 * visual glitches in the VR headset.
+		 * visual glitches. This depends on the runtime.
 		 *
 		 * You **must not** throw exceptions inside the `render_function` function.
 		 * Doing so will leave this object in an invalid state.
+		 *
+		 * NOTE: Some functions cannot be called inside the `render_function`. Refer
+		 * to their documentation for details.
+		 *
+		 * NOTE: The matrices received represent coordinates in meters.
+		 *
+		 * This method **must not** be called inside the render function, before this object
+		 * has been initialized or after this object has been de-initialized.
 		 *
 		 * @param render_function A user-provided render function. This function will be
 		 * called automatically for each view and will receive the correct parameters
@@ -127,6 +153,7 @@ namespace XrBridge
 		 * You **must not** store this pointer outside of the `render_function`!
 		 * 3. `const glm::mat4 projection_matrix`: The projection matrix to be used for rendering.
 		 * 4. `const glm::mat4 view_matrix`: The view matrix to be used for rendering.
+		 *
 		 * @return `true` if no error occurred, `false` otherwise.
 		 *
 		 * Example using a lambda:
