@@ -92,6 +92,42 @@ OvVR è una libreria che funge da wrapper attorno a OpenVR sviluppata dal docent
 
 % TODO: Explain the API design.
 
+\section{API}
+
+Di seguito è riportato il flusso di esecuzione di XrBridge:
+
+\begin{figure}[h]
+  \caption{Flusso di esecuzione di XrBridge}
+  \centering
+  \includegraphics[scale=0.2]{resources/flow.png}
+\end{figure}
+
+Lo schema riporta le operazioni fondamentali necessarie per sviluppare un'applicazione grafica.
+
+Uno degli aspetti più importanti della API è la semplicità. È importante che l'utente che farà uso di XrBridge si possa concentrare il più possibile sullo sviluppare la propria applicazione invece di dover pensare ai dettagli di implementazione della libreria. Questo significa che la API deve esporre solamente metodi e parametri che sono assolutamente necessari per l'utente e null'altro. Per questo motivo, è stato scelto di avere un metodo per ogni operazione fondamentale (TODO: vedi schema): inizializzazione, aggiornamento dello stato, render e de-inizializzazione. In realtà, aggiornamento e render potrebbero essere raggruppati in un'unica operazione, ma è stato deciso di lasciarli separati (se l'applicazione è in pausa e perciò non deve mostrare nulla, ma deve comunque rimanere in ascolto di eventi?). I dettagli della API e dei metodi si trovano nella documentazione apposita.
+
+XrBridge è stato implementato sotto forma di una singola classe, dove ogni metodo pubblico rappresenta una delle operazioni fondamentali.
+
+\subsection{Gestione errori}
+
+% TODO
+
+\subsection{Inizializzazione}
+
+% TODO: Explain what initializing does (OpenXR instance, session, ...)
+
+\subsection{Update}
+
+% TODO
+
+\subsection{Render}
+
+% TODO
+
+\subsection{De-inizializzazione}
+
+% TODO
+
 \section{Strumenti e linguaggi di programmazione}
 
 Dal momento che XrBridge andrà a sostituire una libreria già in uso scritta in C++ e che i corsi di grafica e realtà virtuale fanno uso unicamente di C++, anche XrBridge verrà scritto in C++; nessun altro linguaggio di programmazione è necessario per la libreria.
