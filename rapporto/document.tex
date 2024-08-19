@@ -108,13 +108,9 @@ Uno degli aspetti più importanti della API è la semplicità. È importante che
 
 XrBridge è stato implementato sotto forma di una singola classe, dove ogni metodo pubblico rappresenta una delle operazioni fondamentali.
 
-\subsection{Gestione errori}
-
-% TODO
-
 \subsection{Inizializzazione}
 
-% TODO: Explain what initializing does (OpenXR instance, session, ...)
+Il primo passo è quello di inizializzare XrBridge. Questo significa creare una connessione con la runtime di OpenXR, iniziare una sessione e caricare le estensioni necessarie. Questo passo è assolutamente necessario per poter utilizzare le funzionalità di OpenXR. Un errore durante questa fase è probabilmente causato da un problema con l'ambiente di esecuzione; potrebbe trattarsi di un errore di configurazione della runtime o un problema con l'hardware VR.
 
 \subsection{Update}
 
@@ -127,6 +123,12 @@ XrBridge è stato implementato sotto forma di una singola classe, dove ogni meto
 \subsection{De-inizializzazione}
 
 % TODO
+
+\subsection{Gestione errori}
+
+Esistono svariati approcci alla gestione degli errori nel codice. I due approcci più puliti e ordinati sono \textit{exceptions} e \textit{errors as values}. Per questo progetto è stato scelto il secondo approccio, per alcuni motivi: 1) è lo stesso approccio utilizzato da OvVR; 2) è lo stesso approccio utilizzato da OpenXR; 3) è più semplice rispetto alle eccezioni; 4) nessuna interruzione inaspettata del flusso di esecuzione.
+
+Tutti i metodi di di XrBridge seguono quindi la stessa convenzione: ritornano un valore \texttt{true} se il metodo è stato eseguito con successo e \texttt{false} in caso di errore. Inoltre, in caso di un errore, un messaggio che descrive l'errore viene stampato su stderr.
 
 \section{Strumenti e linguaggi di programmazione}
 
