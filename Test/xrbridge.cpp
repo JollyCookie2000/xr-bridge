@@ -191,6 +191,12 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 
 	XRBRIDGE_CHECK_DEINITIALIZED(true);
 
+	if (this->is_already_initialized_flag)
+	{
+		XRBRIDGE_ERROR_OUT("This object has already been initialized!");
+		return false;
+	}
+
 	XRBRIDGE_DEBUG_OUT("OpenXR version: " << XR_VERSION_MAJOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_MINOR(XR_CURRENT_API_VERSION) << "." << XR_VERSION_PATCH(XR_CURRENT_API_VERSION));
 
 	XrApplicationInfo application_info = {};
@@ -198,7 +204,8 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	application_info.applicationVersion = 1;
 	std::strncpy(application_info.engineName, "", XR_MAX_ENGINE_NAME_SIZE);
 	application_info.engineVersion = 0;
-	application_info.apiVersion = XR_MAKE_VERSION(1, 0, 0); // NOTE: This is the OpenXR version to use.
+	// NOTE: This is the OpenXR version to use.
+	application_info.apiVersion = XR_MAKE_VERSION(1, 0, 0);
 
 
 	// Load API layers
@@ -292,7 +299,6 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 		}
 
 		// Create the OpenGL binding.
-		// NOTE: Change this to use another graphics API.
 		XrGraphicsBindingOpenGLWin32KHR graphics_binding = {};
 		graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR;
 		graphics_binding.hDC = hdc;
@@ -317,6 +323,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 
 		GLXFBConfig fbconfig = fbconfigs[0];
 
+		// Create the OpenGL binding.
 		XrGraphicsBindingOpenGLXlibKHR graphics_binding = {};
 		graphics_binding.type = XrStructureType::XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR;
 		graphics_binding.xDisplay = glXGetCurrentDisplay();
