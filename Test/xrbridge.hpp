@@ -62,11 +62,13 @@ namespace XrBridge
 	/**
 	 * A simple OpenXR wrapper to easily develop VR applications.
 	 *
-	 * NOTE: This object is **not** thread safe!
+	 * NOTE: This object is **not** thread safe.
 	 *
-	 * NOTE: After an error occurs, the object may be left in an invalid state!
+	 * NOTE: After an error occurs, the object may be left in an invalid state.
 	 * For this reason, it is encouraged to either restart the application or
 	 * create a new instance of this object. Refer to the error message for more details.
+	 *
+	 * NOTE: The currently binded OpenGL frame buffer might change after each method call.
 	 */
 	class XrBridge
 	{
