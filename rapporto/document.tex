@@ -373,6 +373,32 @@ Per quanto riguarda l'approccio X11, esistono due alternative: utilizzare la lib
 
 I parametri \texttt{xDisplay}, \texttt{glxDrawable} e \texttt{glxContext} sono facilmente reperibili utilizzando le funzioni \texttt{glXGetCurrentDisplay}, \texttt{glXGetCurrentDrawable} e \texttt{glXGetCurrentContext} rispettivamente. Il problema sono i parametri \texttt{visualid} e \texttt{glxFBConfig}. Anche questi sono parametri che sono configurati da FreeGLUT ma non sono esposti e non esiste un modo per recuperarli come è possibile per i parametri precedenti.
 
+\subsection{Swapchain}
+
+Una swapchain in OpenXR è una serie di una o più immagini utilizzate per il rendering, dove il numero di immagini in una swapchain dipende dalla configurazione della runtime. Per esempio, se la runtime è configurata per utilizzare la tecnica \textit{double buffering}, una swapchain sarà composta di 2 immagini, mentre se la runtime utilizza il \textit{triple buffering}, le swapchain avranno 3 immagini.
+
+Il formato delle immagini è definito dall'utente e dipende dalla API grafica utilizzata, mentre le immagini vere e proprie vengono create dalla runtime (questo è il comportamento opposto rispetto a OpenVR, dove è l'utente che si deve occupare di creare le immagini, renderizzarle e inviarle alla runtime). Durante la creazione di una swapchain l'utente può scegliere altri parametri, come ad esempio la dimensione delle immagini. Lo standard di OpenXR non specifica quali formati di immagini le runtime devono supportare e, perciò, l'utente deve scegliere un formato che è supportato dalla runtime che desidera utilizzare. In una swapchain, le immagini sono salvate in ordine e ogni immagine ha un indice che la distingue dalle altre immagini della stessa swapchain (effettivamente come un array).
+
+Un'applicazione VR può avere una o più "view", dove una view consiste in una "schermata". Nel caso di un'applicazione che fa uso di un visore del tipo "head-mounted", esisteranno 2 view: una per ogni occhio. Nel caso di un sistema cave, esisterà una view per ogni lato. Ogni view ha una swapchain e, di conseguenza, il numero totale di immagini sarà $ {N}_{immagini} = {N}_{view} \times k $, dove $ k $ è il numero di immagini per view (esempio: 2 nel caso di double-buffering). Per questo progetto, è richiesto che solamente 2 view siano supportate.
+
+Quando è il momento di renderizzare, l'utente deve richiedere alla runtime quale immagine di una swapchain deve utilizzare; la runtime risponderà con un indice. Se, per esempio, una swapchain ha 3 immagini, la runtime ritornerà all'utente un indice 0, 1 o 2. L'utente può quindi utilizzare quella immagine per renderizzare. Una volta finito, l'utente "rilascia" l'immagine alla runtime che si occuperà poi di mostrare l'immagine sul visore VR. Al prossimo ciclo di rendering, la runtime fornirà un'altra immagine all'utente da utilizzare. Dalle mie osservazioni di SteamVR, l'ordine delle imagini fornite è: 0, 1, 2, 0, 1, 2, 0, 1, 2, ...
+
+% TODO: Include a diagram of swapchains
+% TODO: Should I include examples of code for creating a swapchain?
+
+Per comodità, all'interno del codice, è stata definita una struttura creativamente chiamata \texttt{Swapchain} la quale aiuta a semplificare il codice legando assieme i vari componenti di una swapchain: la lista delle immagini, la dimensione delle immagini e la struttura \texttt{XrSwapchain} di OpenXR.
+
+Le swapchain vengono istanziate quando una sessione di OpenXR inizia, all'interno del metodo \texttt{bool begin\_session()}; una swapchain per view. Qui vengono create e configurate tutte le swapchain necessarie. Il metodo \texttt{shared\_ptr<Fbo> create\_fbo(GLuint w, GLuint h)} si occupa di generare le immagini (FBO = Frame Buffer Object) necessarie per le swapchain. Quest'ultimo fa affidamento alla classe \texttt{Fbo} già creata e utilizzata nel corso di realtà virtuale dal docente responsabile. Questa classe consiste in un wrapper attorno agli FBO di OpenGL e ne semplifica l'utilizzo. Grazie a questo, gli utenti avranno meno difficoltà quando dovranno utilizzare i framebuffer durante il rendering.
+
+I framebuffer generati sono composti da una texture generata da OpenXR e il cui formato è specificato dall'utente (TODO: vedi capitolo Differenze fra piattaforme Windows e Linux) e un buffer di profondità.
+
+\subsection{Spazio di riferimento}
+
+In OpenXR, lo spazio di riferimento (\texttt{XrSpace}) è il sistema con cui un'applicazione VR tiene traccia della posizione e rotazione del mondo reale.
+
+% TODO: Talk about the different reference spaces
+% TODO: https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
+
 \section{Limitazioni di FreeGLUT}
 
 FreeGLUT è una libreria multi-piattaforma che permette di gestire finestre, contesti OpenGL, mouse e tastiera. L'utilizzo di questa libreria è obbligatoria dal momento che viene utilizzata dal corso di grafica e il corso di realtà virtuale. Per questo progetto, è stata utilizzata la versione 3.6.0.
@@ -390,6 +416,10 @@ Come menzionato prima nel capitolo [Binding OpenGL + Linux], FreeGLUT non espone
 \end{verbatim}
 
 All'iterno di XrBridge, poi, includere questo file header e accedere alle variabili globali. Come parte della consegna del progetto, è anche presente una patch di git che descrive i cambiamenti effettuati nel dettaglio, così che possono essere facilmente applicati e analizzati.
+
+\begin{quote}
+  Attenzione! La versione modificata di FreeGLUT è stata verificata solamente su Linux; per utilizzare FreeGLUT su Windows, utilizzare la versione originale non modificata.
+\end{quote}
 
 Iniziando con il parametro più semplice: \texttt{visualid}. Questo si tratta di un semplice \texttt{uint32\_t}. È bastato aggiungere una singola riga di codice che assegna una il valore della variabile \texttt{visualInfo->visualid} alla variabile globale creata. Questo viene fatto all'interno della funzione \texttt{fgPlatformOpenWindow} nel file \texttt{src/x11/fg\_window\_x11.c}.
 
@@ -436,7 +466,7 @@ Nella sezione di configurazione di XrBridge (all'inizio del file \texttt{xrbridg
 
 \chapter{Risultati}
 
-% TODO: Compare XrBridge to OvVR
+% TODO: Compare XrBridge to OvVR with example code
 
 \chapter{Conclusioni}
 
@@ -451,42 +481,7 @@ Dal momento che il progetto consiste nello sviluppare una libreria, sarà necess
 Esempio di citazione \cite{4538384}, \cite{5357331,4523385}, \cite{1705631}.
 \footnote{Questa \`e una nota a pi\'e di pagina.}
 \footnote{Questa \`e un'altra nota a pi\'e di pagina.}
-\lipsum[23]
 
-Citazione:
-\begin{quote}
-\lipsum[23]
-\end{quote}
-
-\chapter{Titolazione}
-
-\lipsum[13]
-
-\begin{itemize}
-  \item Elemento A
-  \item Elemento B
-  \item Elemento C
-\end{itemize}
-
-%\begin{itemize}
-%  \item[-] Elemento A
-%  \item[-] Elemento B
-%  \item[-] Elemento C
-%\end{itemize}
-%
-%\begin{enumerate}
-%  \item Alpha
-%  \item Beta
-%  \item Gamma
-%\end{enumerate}
-
-\lipsum[23]
-%\section{Sezione}
-%
-%\lipsum[23]
-%
-%\subsection{Sotto sezione}
-%
 %Un po' di matematica: \newline
 %
 %\begin{math}
@@ -513,4 +508,5 @@ Citazione:
 
 \bibliographystyle{unsrt}
 \bibliography{bibliografia}
+
 \end{document}
