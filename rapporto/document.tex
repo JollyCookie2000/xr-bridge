@@ -50,6 +50,8 @@
 
 \chapter{Introduzione}
 
+% TODO: Mention that this is not a tutorial on OpenXR and refer to the official tutorial and documentation
+
 Lo scopo del progetto è sviluppare un wrapper (d'ora in poi chiamato XrBridge) attorno a OpenXR per permettere di sviluppare applicazioni che fanno uso di realtà virtuale e OpenGL in modo più semplice. XrBridge andrà a sostituire OvVR, un'implementazione simile già esistente sviluppata dal docente responsabile che fa uso di OpenVR. Dal momento che XrBridge verrà utilizzato nel corso di realtà virtuale (successore del corso di grafica), esso dovrà essere il più simile a OvVR possibile.
 
 Aver personalmente seguito sia il corso obligatorio di grafica e il corso opzionale di realtà virtuale mi ha permesso di meglio capire i requisiti del progetto, sia dal punto di vista del docente che dovrà lavorare con XrBridge durante il suo corso, sia dal punto di vista dello studente che dovrà sviluppare un progetto che verrà poi valutato facendo uso di XrBridge.
@@ -59,6 +61,38 @@ L'aspetto più importante di XrBridge (oltre al fatto che deve funzionare) è la
 Lo scopo del corso di realtà virtuale è sviluppare un'applicazione in C++ che fa uso di realtà virtuale senza utilizzare game engines interagendo direttamente con API di basso livello come OpenGL e OpenVR. Il corso opzionale di realtà virtuale si basa sul corso obligatorio di grafica, dove lo scopo è sviluppare un'applicazione grafica 3D (ad esempio un piccolo gioco) senza fare affidamento a game engines esistenti o strumenti simili. Gli studenti imparano ad utilizzare OpenGL e a sviluppare personalmente un game engine che dovranno poi utilizzare per sviluppare l'applicazione grafica. Il corso di realtà virtuale consiste, in poche parole, ad estendere l'applicazione grafica sviluppata nel corso di grafica per aggiungere la funzionalità di realtà virtuale.
 
 % TODO: Explain why the teacher wants to replace OpenVR with OpenXR
+
+\section{Requisiti}
+
+\begin{center}
+  \begin{tabular}{ | m{1cm} | m{6cm} | m{6cm} | }
+    \hline
+    ID   & Descrizione & Note \\
+    \hline
+    R-01 & XrBridge deve supportare la API grafica OpenGL & - \\
+    \hline
+    R-02 & XrBridge deve supportare la piattaforma Linux & - \\
+    \hline
+    R-03 & XrBridge deve supportare la piattaforma Windows & - \\
+    \hline
+    R-04 & XrBridge deve supportare la runtime SteamVR & - \\
+    \hline
+    R-05 & XrBridge deve supportare OpenXR versione 1.1 & - \\
+    \hline
+    R-06 & La API di XrBridge deve essere chiara e semplice & Il più simile possibile a OvVR. \\
+    \hline
+    R-07 & XrBridge deve essere utilizzabile con C++ & Il corso di realtà virtuale si svolge utilizzando C++. \\
+    \hline
+    R-08 & XrBridge deve supportare head-mounted-displays & Visori di realtà virtuale da indossare oppure uno smartphone. Durante il corso di realtà virtuale si usa lo smartphone. \\
+    \hline
+    R-09 & La API deve permettere all'utente di reperire posizione e rotazione del visore & - \\
+    \hline
+    R-10 & La API deve permettere di rilevare l'input dall'utente & - \\
+    \hline
+    R-11 & XrBridge deve supportare la libreria grafica FreeGLUT & L'uso di FreeGLUT è richiesto dai corsi di grafica e realtà virtuale. \\
+    \hline
+  \end{tabular}
+\end{center}
 
 \chapter{Stato dell'arte}
 
@@ -90,8 +124,6 @@ OvVR è una libreria che funge da wrapper attorno a OpenVR sviluppata dal docent
 
 \chapter{Design e implementazione}
 
-% TODO: Explain the API design.
-
 \section{API}
 
 Di seguito è riportato il flusso di esecuzione di XrBridge:
@@ -106,23 +138,92 @@ Lo schema riporta le operazioni fondamentali necessarie per sviluppare un'applic
 
 Uno degli aspetti più importanti della API è la semplicità. È importante che l'utente che farà uso di XrBridge si possa concentrare il più possibile sullo sviluppare la propria applicazione invece di dover pensare ai dettagli di implementazione della libreria. Questo significa che la API deve esporre solamente metodi e parametri che sono assolutamente necessari per l'utente e null'altro. Per questo motivo, è stato scelto di avere un metodo per ogni operazione fondamentale (TODO: vedi schema): inizializzazione, aggiornamento dello stato, render e de-inizializzazione. In realtà, aggiornamento e render potrebbero essere raggruppati in un'unica operazione, ma è stato deciso di lasciarli separati (se l'applicazione è in pausa e perciò non deve mostrare nulla, ma deve comunque rimanere in ascolto di eventi?). I dettagli della API e dei metodi si trovano nella documentazione apposita.
 
-XrBridge è stato implementato sotto forma di una singola classe, dove ogni metodo pubblico rappresenta una delle operazioni fondamentali.
+XrBridge è stato implementato sotto forma di una singola classe, dove ogni metodo pubblico rappresenta una delle operazioni fondamentali. Per facilitare l'utilizzo di XrBridge, oltre che ad offrire una documentazione più dettagliata della API e un'applicazione di essempio che ne dimostra chiaramente l'utilizzo, ogni metodo ha dei controlli per assicurarsi che essi vengono chiamati nell'ordine giusto (per esempio per assicurarsi che l'utente abbia inizializzato XrBridge prima di renderizzare una scena).
 
 \subsection{Inizializzazione}
 
-Il primo passo è quello di inizializzare XrBridge. Questo significa creare una connessione con la runtime di OpenXR, iniziare una sessione e caricare le estensioni necessarie. Questo passo è assolutamente necessario per poter utilizzare le funzionalità di OpenXR. Un errore durante questa fase è probabilmente causato da un problema con l'ambiente di esecuzione; potrebbe trattarsi di un errore di configurazione della runtime o un problema con l'hardware VR.
+Il primo passo è quello di inizializzare XrBridge. Questo significa creare una connessione con la runtime di OpenXR, iniziare una sessione e caricare le estensioni necessarie. Questo passo è assolutamente necessario per poter utilizzare le funzionalità di OpenXR. Un errore durante questa fase è probabilmente causato da un problema con l'ambiente di esecuzione; potrebbe trattarsi di un errore di configurazione della runtime o un problema con l'hardware VR. Nessun'altra azione può essere eseguita prima dell'inizializzazione e l'inizializzazione può avvenire una sola volta (inizializzare più volte è considerato un errore).
+
+XrBridge mette a disposizione il metodo \texttt{bool init(std::string\& application\_name)} per fare questo. Il parametro \texttt{application\_name} non è di molta importanza e viene utilizzato da SteamVR solamente come dettaglio visivo e non ha alcun effetto sull'esecuzione dell'applicazione. Per i dettagli sul suo utilizzo, fare riferimento alla documentazione sulla API e all'applicazione di esempio.
 
 \subsection{Update}
 
-% TODO
+Questa è una delle operazioni che vengono eseguite di continuo per la duranta dell'applicazione. Il metodo \texttt{bool update()} si occupa principalmente di gestire gli eventi generati da OpenXR, come ad esempio il termine di una sessione.
+
+È inoltre importante per l'utente costantemente monitorare il valore di ritorno di questa funzione, poichè un errore potrebbe essere sollevato nel caso la runtime si disconnette (probabilmente l'utente ha disconnesso il suo visore o ha chiuso la runtime prima di terminare l'applicazione).
+
+OpenXR fa distinzione fra un'istanza e una sessione. L'istanza è il collegamento alla runtime e viene creata una sola volta durante l'inizializzazione; mentre una sessione può essere terminata e ricreata più volte durante l'esecuzione dell'applicazione. Un'istanza viene generalmente terminata quando la runtime stessa viene terminata; in questo caso, XrBridge segnala un errore e necessita di un riavvio dell'applicazione. Nel caso che la sessione venisse terminata, invece, XrBridge attenderà semplicemente che la sessione venga ristabilita senza ritornare alcun errore o output.
 
 \subsection{Render}
 
-% TODO
+Questo è il passo più complesso di tutti e quello che differisce di più rispetto a OvVR. Come update, anche render viene seguito di continuo. Il rendering consiste nel generare le immagini che verranno poi proiettate sul visore VR seguendo le istruzioni dell'utente. L'utente invoca il metodo \texttt{bool render(render\_function\_t render\_function)} per renderizzare. L'argomento \texttt{render\_function} verrà spiegato più tardi.
+
+OpenXR ha un sistema di rendering molto complesso che prende in considerazione la tempistica dei frame (refresh-rate), layers e swapchains.
+
+OpenXR si aspetta che alcune azioni vengano eseguite entro un tempo limite stabilito dalla runtime. Nel caso il tempo limite scadesse, le conseguenze dipendono anche loro dalla runtime. Questo si applica anche al rendering dei frame. Nel caso di SteamVR, un mancato tempo limite potrebbe risultare in difetti grafici. Questa sincronizzazione è fatta dalla funzione \texttt{xrWaitFrame}.
+
+Per costruire un frame, OpenXR utilizza un sistema di layers. Esistono diversi tipi di layers (3D, 2D, ...) che verranno poi sovrapposti (composizione) dalla runtime per generare l'immagine finale. È per esempio possibile avere un layer 2D dedicato alla GUI e un altro layer 3D per la scena. È anche posibilie utilizzare un singolo layer 3D e disegnare la GUI manualmente senza affidarsi alla composizione offerta da OpenXR. Questo è l'approccio di XrBridge, dove viene utilizzato un singolo layer di proiezione (layer 3D).
+
+Il layer di proiezione si aspetta un certo numero di \textit{view}. Una view consiste in un'immagine che verrà mostrata sul dispositivo VR. Nel caso di un headset, ci saranno 2 view: una per l'occhio destro e una per l'occhio sinistro. È dunque necesario renderizzare la scena una volta per ogni occhio.
+
+Una delle maggiori differenze tra OpenVR e OpenXR, quandi si tratta di rendering, è chi si occupa di generare i framebuffers che verranno utilizzati per il rendering. Nel caso  di OpenVR, è compito dell'utente creare i framebuffers, riempirli e inviarli a OpenVR una volta che il rendering è completo. Al contraro, OpenXR esige che sia la runtime a creare i framebuffers e che l'utente deve richiedere i framebuffers prima di poterli utilizzare. Questa differenza cambia in modo significativo la struttura dell'applicazione dal punto di vista del corso di realtà virtuale. Se prima gli studenti dovevano imparare il funzionamento per poter creare i propri framebuffers, ora questo processo è automatico.
+
+Di seguito è riportata la sequenza di azioni richiete da OpenXR per renderizzare una scena. Le parti in italico sono implementate dall'utente, mentre il resto è eseguito automaticamente da XrBridge.
+
+\begin{enumerate}
+  \item Attendere il momento giusto per inizare a renderizzare il frame (sincronizzazione).
+
+  \item Preparare il rendering dell'intero frame (begin).
+
+  \item Preparare il rendering dell'occhio \textbf{sinistro} (begin).
+  \item \textit{Renderizzare la scena dalla propsettiva dell'occhio sinistro}.
+  \item Finalizzare il rendering dell'occhio sinistro (end).
+
+  \item Preparare il rendering dell'occhio \textbf{destro} (begin).
+  \item \textit{Renderizzare la scena dalla propsettiva dell'occhio destro}.
+  \item Finalizzare il rendering dell'occhio destro (end).
+
+  \item Finalizzare il rendering dell'intero frame (end).
+\end{enumerate}
+
+Il frame è mostrato all'utente solamente alla fine di tutta la procedura di render, quando tutte le view sono complete.
+
+Come si può notare, ci sono due sequenze di \textit{begin - ... - end}: una per l'intero frame e una per ogni view/occhio.
+
+Una possibilità di implementazione consiste nell'avere un metodo per ogni fase (\textit{begin\_frame}, \textit{beign\_eye}, \textit{end\_eye}, \textit{end\_frame}). Questa soluzione ha alcuni problemi: 1) una grande quantità di metodi sarebbero richiesti; 2) questo richiederebbe che l'utente faccia molta attenzione che ogni metodo sia chiamato nell'ordine corretto; 3) questo approccio non è scalabile (se si volesse sviluppare un'applicazione con una sola view?); 4) non è un approccio elegante; 5) è complesso da implementare.
+
+Per XrBridge è stato scelto un approccio che appare molto più pulito, ordinato, semplice e scalabile: l'utente fornisce una propria funzione di render che verrà invocata quante volte necessario da XrBridge. È possibile utilizzare una lambda per questo, come nell'esempio seguente (semplificato):
+
+\begin{verbatim}
+  void render()
+  {
+    // ...
+
+    xrbridge.render([&] (
+      Eye eye,
+      shared_ptr<Fbo> fbo,
+      mat4 proj_matrix,
+      mat4 view_matrix,
+      uint32_t width,
+      uint32_t height)) {
+
+        // Render scene
+
+      });
+
+      // ...
+    }
+\end{verbatim}
+
+Per più dettagli sul metodo e gli argomenti, fare riferimento alla documentazione di XrBridge.
+
+Lo svantaggio principale di queso approccio è il fatto che richiede conoscienza delle lambda, anche se minima.
+
+Un grande vantaggio che si può notare dall'esempio è il fatto che, per ogni volta che la lambda viene chiamata, è facile reperire tutte le informazioni necessarie per renderizzare la scena: questo include il framebuffer da utilizzare, le matrici di proiezione e view e altri parametri che si possono aggiungere se desiderato senza necessitare di grandi modifiche al codice. Questo permette di semplificare la API ancora di più, dal momento che non sono necessari metodi appositi per recuperare queste informazioni. Ad ogni chiamata della lambda, tutte le informazioni necessarie sono subito a disposizione. Utilizzando la lista di cattura della lambda, catturando tutto come mostrato nell'esempio sopra, permette di eseguire operazioni di preparazione una sola volta (ad esempio costruire la lista di render) invece che sprecare risorse e ripetere le stesse operazioni per ogni chiamata della lambda. Se utilizzato in questo modo, dal punto di vista dell'utente, questo approccio diventa molto semplice da capire e implementare e permette di ignorare quasi completamente le complessità che nascono dall'utilizzo di lambda.
 
 \subsection{De-inizializzazione}
 
-% TODO
+Questo si tratta dell'ultimo passo, dopo il quale l'istanza di XrBridge diventerà inutilizzabile. A questo punto l'utente dovrà riavviare l'applicazione oppure creare una nuova istanza. Il metodo \texttt{bool free()} si occupa di terminare la sessione, l'istanza e liberare tutte le risorse utilizzate.
 
 \subsection{Gestione errori}
 
@@ -166,6 +267,52 @@ Per permettere alle applicazioni di trovare la runtime corretta installata sul c
 % TODO: https://registry.khronos.org/OpenXR/specs/1.0/loader.html#runtime-manifest-file-format
 % TODO: https://registry.khronos.org/OpenXR/specs/1.0/loader.html#active-runtime-information
 
+\subsection{Loader}
+
+OpenXR utilizza un loader, ovvero un programma che ha lo scopo di individuare una runtime di OpenXR sul computer dell'utente. Questo programma viene sotto forma di una libreria che viene inclusa in un'applicazione VR. All'avvio dell'applicazione il loader cerca un file manifest di una runtime valido (TODO: chapter Runtime), stabilisce una connessione con la runtime e carica tutte le funzioni relative a OpenXR (run-time linking). Questo funziona in modo simile a librerie come GLEW per OpenGL.
+
+OpenXR non offre un loader già compilato ed è quindi necessario compilarlo manualmente. L'applicazione Test include la libreria del loader già compilata e pronta all'uso. La versione di questa libreria è la 1.1.37. Di seguito sono riportate le istruzioni di come compilare la libreria loader per Windows utilizzando Visual Studio 2019 (per i seguenti passi è necessario Python 3; su Linux è possibile installare il loader utilizzando il package manager della distribuzione):
+% TODO: Format
+1. Scaricare e decomprimere il codice sorgente dal seguente link: https://github.com/KhronosGroup/OpenXR-SDK/releases/tag/release-1.1.37 (è possibile scegliere un'altra versione; per questo progetto solo la versione 1.1.37 è stata verificata).
+2. Creare la cartella `build/` nella root della repository.
+3. Dall'interno di `build/`, creare il file di progetto di Visual Studio utilizzando cmake: \$ cmake -G 'Visual Studio 16 2019' -DDYNAMIC\_LOADER=ON .. . È possibile scegliere un'altra versione di Visual Studio.
+4. Aprire la soluzione `OPENXR.sln` appena creata con Visual Studio.
+5. Scegliere la configurazione desiderata; per questo progetto è stato utilizzato *Release* e *x64*.
+6. Compilare il progetto openxr\_loader.
+7. Recuperare i file generati dal percorso build/src/loader/Release. I file necessari sono openxr\_loader.dll e openxr\_loader.lib.
+
+\subsection{Filosofia della API}
+
+OpenXR segue una filosofia molto simile a Vulkan, essendo stato sviluppato dallo stesso gruppo. Ogni funzione di OpenXR è caratterizzata dal prefisso `xr` seguito dal nome della funzione in camel case. Il passaggio di parametri alle funzioni di OpenXR viene fatto attraverso uno struct, il quale contiene un campo per ogni argomento che la funzione accetta e ha il prefisso \texttt{Xr}. Ogni funzione accetta almeno uno struct, anche se non necessita di parametri. Questo causa alcuni scenari interessanti, dove una funzione accetta come parametro uno struct senza membri. Ogni struct ha almeno due membri: \texttt{type}, il quale deve essere assegnato al momento della creazione dello struct e il suo valore è definito dallo standard OpenXR e \texttt{next}, il quale si tratta di un puntatore ad un altro struct in modo da permettere di estendere uno strct creando una catena. Nella maggior parte dei casi il membro \texttt{next} avrà un valore di \texttt{nullptr}.
+
+\begin{verbatim}
+  // Inizializza tutti i campi dello struct al loro valore di default.
+  XrInstanceCreateInfo instance_create_info = {};
+  // Configura il tipo della struttura.
+  instance_create_info.type = XR_TYPE_INSTANCE_CREATE_INFO;
+  // Configura gli altri parametri ...
+  instance_create_info.createFlags = NULL;
+  // ...
+\end{verbatim}
+
+\subsection{Layers e estensioni}
+
+Similmente a Vulkan, OpenXR permette di estendere le proprie funzionalità attraverso dei layers e delle estensioni.
+
+Un layer, come suggerisce il nome, è uno strato che può essere inserito fra OpenXR e l'applicazione. Un layer può offrire funzionalità come ad esempio tracing delle chiamate delle funzioni. Per questo progetto, non è stato necessario nessun layer. In caso si voglia aggiungere un layer, è sufficiente aggiungere il suo nome alla riga seguente all'interno di \texttt{xrbridge.cpp}, nella funzione \texttt{init}:
+
+\begin{verbatim}
+  const std::vector<std::string> requested_api_layers = { };
+\end{verbatim}
+
+Le estensioni, invece, permettono di aggiungere funzionalità extra a OpenXR. Alcune estensioni sono sviluppate da Khronos, ma possono anche essere sviluppate da terze parti. Per questo progetto, una singola estensione è stata necessaria: \texttt{XR\_KHR\_opengl\_enable}. Come suggerisce il nome, questa estensione abilita il supporto per la API grafica OpenGL.In caso si voglia aggiungere un'altra estensione, è sufficiente aggiungere il suo nome alla riga seguente all'interno di \texttt{xrbridge.cpp}, nella funzione \texttt{init}:
+
+\begin{verbatim}
+  const std::vector<std::string> requested_extensions = {
+    "XR_KHR_opengl_enable",
+  };
+\end{verbatim}
+
 \subsection{Binding grafico}
 
 OpenXR fa uso di "graphic bindings", ovvero strutture che legano assieme una API grafica e una piattaforma. All'interno del codice, questi binding sono implementati sotto forma di struct. Esiste uno struct per ogni combinazione di API grafica (OpenGL, Vulkan, DirectX, ...) e piattaforma (Win32, X11, Wayland, ...) supportate e ogni struct richiede dei parametri legati alla piattaforma e alla API grafica scelta. Questi struct sono definiti nel file \texttt{openxr\_platform.h} della libreria OpenXR. Ecco alcuni esempi:
@@ -184,7 +331,7 @@ Durante l'inizializzazione di OpenXR, è compito dello sviluppatore istanziare e
 
 \subsubsection{Binding OpenGL + Windows}
 
-Il binding OpenGL + Windows è rappresentato dallo struct (\texttt{XrGraphicsBindingOpenGLWin32KHR}. Di seguito è riportata la definizione dello struct (i parametri \texttt{type} e \texttt{next} non sono importanti per questo capitolo):
+Il binding OpenGL + Windows è rappresentato dalla struttura (\texttt{XrGraphicsBindingOpenGLWin32KHR}. Di seguito è riportata la definizione dello struct (i parametri \texttt{type} e \texttt{next} non sono importanti per questo capitolo):
 
 \begin{verbatim}
   typedef struct XrGraphicsBindingOpenGLWin32KHR {
@@ -232,15 +379,64 @@ FreeGLUT è una libreria multi-piattaforma che permette di gestire finestre, con
 
 % TODO: Mention why the teacher wants FreeGLUT and not other libraries
 
-Come menzionato prima nel capitolo [Binding OpenGL + Linux], FreeGLUT non espone certi parametri che potrebbero essere necessari ad un'applicazione. È stato dunque necessario apportare modifiche alla libreria. L'approccio scelto è il seguente: aggiungere un nuovo file header (\texttt{freeglut\_globals.h}) con all'interno delle variabili globali e salvarci dentro i parametri necessari. All'itenro di XrBridge, poi, includere questo file header e accedere alle variabili globali. Come parte della consegna del progetto, è anche presente una patch di git che descrive i cambiamenti effettuati nel dettaglio, così che possono essere facilmente applicati e analizzati.
+Come menzionato prima nel capitolo [Binding OpenGL + Linux], FreeGLUT non espone certi parametri che potrebbero essere necessari ad un'applicazione. È stato dunque necessario apportare modifiche alla libreria. Di seguito è descritto l'approccio scelto.
 
-Iniziando con il parametro più semplice: \texttt{visualid}. Questo si tratta di un semplice \texttt{uint32\_t}. È bastato aggiungere una singola riga di codice che assegna una il valore della variabile \texttt{visualInfo->visualid} alla variabile globale creata. Questo viene fatto all'interno della funzione \texttt{fgPlatformOpenWindow} nel file \texttt{src/x11/fg\_window\_x11.c} all'itenro della repo di FreeGLUT.
+È stato aggiunto un nuovo file a FreeGLUT chiamato \texttt{freeglut\_globals.h} e, al suo interno, sono state definite due variabili globali:
+
+\begin{verbatim}
+  // Etratto da freeglut_globals.h
+  uint32_t freeglut_visualid = 0;
+  int freeglut_attributes[100] = { 0 };
+\end{verbatim}
+
+All'iterno di XrBridge, poi, includere questo file header e accedere alle variabili globali. Come parte della consegna del progetto, è anche presente una patch di git che descrive i cambiamenti effettuati nel dettaglio, così che possono essere facilmente applicati e analizzati.
+
+Iniziando con il parametro più semplice: \texttt{visualid}. Questo si tratta di un semplice \texttt{uint32\_t}. È bastato aggiungere una singola riga di codice che assegna una il valore della variabile \texttt{visualInfo->visualid} alla variabile globale creata. Questo viene fatto all'interno della funzione \texttt{fgPlatformOpenWindow} nel file \texttt{src/x11/fg\_window\_x11.c}.
+
+\begin{verbatim}
+  // src/x11/fg_window_x11.c @ 432
+  freeglut_visualid = visualInfo->visualid;
+\end{verbatim}
 
 Il secondo parametro è \texttt{glxFBConfig}. Questo è più complicato rispetto al precedente, pochè non si tratta di un semplice valore che può essere facilmente copiato, bensì di una struttura interna che non viene esposta all'utente se non attraverso un puntatore. Questa struttura viene generata dalla funzione \texttt{glXChooseFBConfig}, la quale accetta una serie di attributi assieme ad altri parametri e ritorna un puntatore ad una struttura di tipo \texttt{GLXFBConfig}. La soluzione è fortunatamente pittosto semplice: è sufficiente ottenere la lista di attributi usati per generare la struttura e invocare nuovamente il metodo \texttt{GLXFBConfig}. Per fare questo, è stato necessario salvare gli attributi in una delle variabili globali appena create. Questo è stato fatto nella funzione \texttt{fghChooseConfig} nel file \texttt{src/x11/fg\_window\_x11\_glx.c}. Infine, all'interno di XrBridge, è bastato chiamare la funzione \texttt{glXChooseFBConfig} con gli attributi corretti e così si ottiene la struttura necessaria.
 
+\begin{verbatim}
+  // src/x11/fg_window_x11_glx.c @ 102
+  for (unsigned int i = 0; i < 100; ++i)
+  {
+    freeglut_attributes[i] = attributes[i];
+  }
+\end{verbatim}
+
 Una libreria alternativa a FreeGLUT è GLFW, la quale espone i parametri interni attravero dei metodi specifici. Come menzionato all'inizio del capitolo, però, non è stato posibilie utilizzare questa libreria.
 
+\section{Differenze fra piattaforme Windows e Linux}
+
+Ci sono alcune importanti differenze fra le piattafrome Windows e Linux che hanno richiesto aggiustamenti all'interno del codice. In precedenza è già stato menzionato come il binding grafico differisce tra piattaforme (TODO: link to chapter); di seguito saranno presentate alcune differenze che hanno causato difficoltà nello sviluppo di XrBridge.
+
+Quando si tratta di generare i framebuffers per ogni view/occhio, è possibile specificare il formato dell'immagine desiderato (es: GL\_RGBA16F, GL\_SRGB8, ...). Il formato dipende fortemente dalla API grafica scelta e la runtime, dal momento che OpenXR non specifica alcun formato di default.
+
+Una delle difficoltà riscontrate durante lo sviluppo, è il fatto che SteamVR supporta formati diversi a seconda della piattaforma. Di seguito sono elencati i formati supportati da SteamVR sulle piattaforme principali dalla versione attuale di SteamVR: % TODO: Which version?
+
+% TODO: List which formats are available on SteamVR on Windows and Linux
+\begin{center}
+  \begin{tabular}{ l l l }
+    Formato     & Windows & Linux \\
+    \hline
+    GL\_RGBA16F & Sì      & No    \\
+    GL\_SRGB8   & Sì      & Sì    \\
+  \end{tabular}
+\end{center}
+
+SteamVR è costantemente aggiornato e, perciò, è molto probabile che in futuro i formati supportati cambino.
+
+A causa di queste differenze, è stato deciso di permettere all'utente di specificare il formato per piattaforma invece di avere una singola configurazione globale.
+
+Nella sezione di configurazione di XrBridge (all'inizio del file \texttt{xrbridge.cpp}) è possibile specificare il formato con le variabili \texttt{XRBRIDGE\_CONFIG\_SWAPCHAIN\_FORMAT\_WINDOWS} e \texttt{XRBRIDGE\_CONFIG\_SWAPCHAIN\_FORMAT\_LINUX}.
+
 \chapter{Risultati}
+
+% TODO: Compare XrBridge to OvVR
 
 \chapter{Conclusioni}
 
@@ -249,19 +445,6 @@ Una libreria alternativa a FreeGLUT è GLFW, la quale espone i parametri interni
 Dal momento che il progetto consiste nello sviluppare una libreria, sarà necessario un'applicazione che farà uso di XrBridge. Questa applicazione avrà il doppio scopo di aiutare nello sviluppo e test della libreria e
 % TODO: Since I'm developing a library, I need a testing application
 
-\section{Filosofia}
-
-% TODO: Simplicity
-% TODO: Has to fit in with the rest of the VR course
-
-\section{API}
-
-% TODO: Describe what the API is supposed to look like.
-
-\chapter{Titolazione}
-
-\lipsum[13]
-
 \section{Sezione}
 
 \lipsum[23]
@@ -269,18 +452,6 @@ Esempio di citazione \cite{4538384}, \cite{5357331,4523385}, \cite{1705631}.
 \footnote{Questa \`e una nota a pi\'e di pagina.}
 \footnote{Questa \`e un'altra nota a pi\'e di pagina.}
 \lipsum[23]
-
-\subsection{Sotto sezione}
-
-\texttt{Questo testo ha una spaziatura fissa}
-
-\textit{Questo testo \`e in italico}
-
-\textbf{Questo testo \`e in grassetto}
-
-\textsc{Questo testo \`e in maiuscoletto}
-
-\underline{Questo testo \`e sottolineato} \\
 
 Citazione:
 \begin{quote}
