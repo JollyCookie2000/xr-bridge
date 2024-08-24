@@ -1,13 +1,17 @@
+// TODO: Move this into xrbridge.hpp?
 /* ========== CONFIGURATION ========== */
 
 // The format to be used to generate the FBOs.
-// https://steamcommunity.com/app/250820/discussions/8/3121550424355682585/
-// Apparently, SteamVR on Linux (at least up to version 2.7.4) only supports GL_SRGB8.
+// NOTE: SteamVR supports different formats on Windows and Linux.
 #define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS GL_RGBA16F
 #define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX   GL_SRGB8
 
+// The type of reference space.
 // https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
 #define XRBRIDGE_CONFIG_SPACE XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_LOCAL
+
+// The OpenXR version to use.
+#define XRBRIDGE_CONFIG_OPENXR_VERSION XR_MAKE_VERSION(1, 0, 0);
 
 /* ========== CONFIGURATION ========== */
 
@@ -204,8 +208,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	application_info.applicationVersion = 1;
 	std::strncpy(application_info.engineName, "", XR_MAX_ENGINE_NAME_SIZE);
 	application_info.engineVersion = 0;
-	// NOTE: This is the OpenXR version to use.
-	application_info.apiVersion = XR_MAKE_VERSION(1, 0, 0);
+	application_info.apiVersion = XRBRIDGE_CONFIG_OPENXR_VERSION;
 
 
 	// Load API layers
