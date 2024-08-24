@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['set_5fclipping_5fplanes_0',['set_clipping_planes',['../classXrBridge_1_1XrBridge.html#a3a01244fb8bf327dfcdb0a90c4feb401',1,'XrBridge::XrBridge']]]
+  ['set_5fclipping_5fplanes_12',['set_clipping_planes',['../classXrBridge.html#a275976c575b6b4dd1a935f36dfe48f1b',1,'XrBridge']]]
 ];

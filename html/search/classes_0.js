@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['swapchain_0',['Swapchain',['../structXrBridge_1_1Swapchain.html',1,'XrBridge']]]
+  ['xrbridge_8',['XrBridge',['../classXrBridge.html',1,'']]]
 ];

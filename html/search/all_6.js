@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['width_0',['width',['../structXrBridge_1_1Swapchain.html#af4f8632958acda74634d473917992b42',1,'XrBridge::Swapchain']]]
+  ['xrbridge_7',['XrBridge',['../classXrBridge.html',1,'XrBridge'],['../classXrBridge.html#a9a7420d9a30fabaf1e2e652675f52a31',1,'XrBridge::XrBridge()']]]
 ];

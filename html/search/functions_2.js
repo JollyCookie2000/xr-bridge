@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['render_0',['render',['../classXrBridge_1_1XrBridge.html#a070774b08ac634fb11eaa472997798ac',1,'XrBridge::XrBridge']]]
+  ['render_11',['render',['../classXrBridge.html#a270ad0e928c80c77c0f5be80b3b92225',1,'XrBridge']]]
 ];
