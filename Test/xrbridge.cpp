@@ -1,10 +1,9 @@
-// TODO: Move this into xrbridge.hpp?
 /* ========== CONFIGURATION ========== */
 
 // The format to be used to generate the FBOs.
 // NOTE: SteamVR supports different formats on Windows and Linux.
-#define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS GL_RGBA16F
-#define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX   GL_SRGB8
+#define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_WINDOWS GL_SRGB8_ALPHA8
+#define XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX   GL_SRGB8_ALPHA8
 
 // The type of reference space.
 // https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
