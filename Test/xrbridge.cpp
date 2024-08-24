@@ -174,7 +174,7 @@ static bool is_extension_supported(const std::string& extension_name)
 	return false;
 }
 
-XrBridge::XrBridge::XrBridge() :
+XrBridge::XrBridge() :
 	is_currently_rendering_flag { false },
 	is_already_initialized_flag { false },
 	is_already_deinitialized_flag { false },
@@ -189,7 +189,7 @@ XrBridge::XrBridge::XrBridge() :
 {
 }
 
-bool XrBridge::XrBridge::init(const std::string& application_name)
+bool XrBridge::init(const std::string& application_name)
 {
 	XRBRIDGE_CHECK_RENDERING(true);
 
@@ -356,7 +356,7 @@ bool XrBridge::XrBridge::init(const std::string& application_name)
 	return true;
 }
 
-bool XrBridge::XrBridge::free()
+bool XrBridge::free()
 {
 	XRBRIDGE_CHECK_INITIALIZED(false);
 
@@ -386,7 +386,7 @@ bool XrBridge::XrBridge::free()
 	return true;
 }
 
-bool XrBridge::XrBridge::update()
+bool XrBridge::update()
 {
 	XRBRIDGE_CHECK_RENDERING(true);
 
@@ -480,7 +480,7 @@ bool XrBridge::XrBridge::update()
 	return true;
 }
 
-bool XrBridge::XrBridge::render(const render_function_t render_function)
+bool XrBridge::render(const render_function_t render_function)
 {
 	XRBRIDGE_CHECK_RENDERING(true);
 
@@ -615,13 +615,13 @@ bool XrBridge::XrBridge::render(const render_function_t render_function)
 	return true;
 }
 
-void XrBridge::XrBridge::set_clipping_planes(const float near_clipping_plane, const float far_clipping_plane)
+void XrBridge::set_clipping_planes(const float near_clipping_plane, const float far_clipping_plane)
 {
 	this->near_clipping_plane = near_clipping_plane;
 	this->far_clipping_plane = far_clipping_plane;
 }
 
-bool XrBridge::XrBridge::begin_session()
+bool XrBridge::begin_session()
 {
 	XrSessionBeginInfo session_begin_info = {};
 	session_begin_info.type = XrStructureType::XR_TYPE_SESSION_BEGIN_INFO;
@@ -702,7 +702,7 @@ bool XrBridge::XrBridge::begin_session()
 	return true;
 }
 
-bool XrBridge::XrBridge::end_session()
+bool XrBridge::end_session()
 {
 	// Destroy swapchains.
 	for (const auto& swapchain : this->swapchains)
@@ -725,7 +725,7 @@ bool XrBridge::XrBridge::end_session()
 	return true;
 }
 
-std::shared_ptr<Fbo> XrBridge::XrBridge::create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const
+std::shared_ptr<Fbo> XrBridge::create_fbo(const GLuint color, const GLsizei width, const GLsizei height) const
 {
 	std::shared_ptr<Fbo> fbo = std::make_shared<Fbo>();
 

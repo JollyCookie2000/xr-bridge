@@ -50,7 +50,7 @@ int main(int argc, char** argv)
 	glEnable(GL_DEPTH_TEST);
 
 	// Create an instance of XrBridge.
-	XrBridge::XrBridge xrbridge;
+	XrBridge xrbridge;
 
 	// Initialize the XrBridge instance.
 	// The string is the name of the application that appears on SteamVR. This is not
