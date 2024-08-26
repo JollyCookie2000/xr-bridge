@@ -1,5 +1,7 @@
 \documentclass[twoside]{supsistudent} 
 
+\usepackage{float}
+
 % per settare noindent
 \setlength{\parindent}{0pt}
 
@@ -18,7 +20,6 @@
 \setcounter{secnumdepth}{5} 	%per avere più livelli nei titoli
 \setcounter{tocdepth}{5}		%per avere più livelli nell'indice
 
-
 \titolo{XR Bridge: un wrapper OpenXR-OpenGL per applicazioni VR}
 \studente{Lorenzo Adam Piazza}
 \relatore{Peternier Achille}
@@ -28,15 +29,12 @@
 \modulo{C10826}
 \anno{2023 / 2024}
 
-
-
 \begin{document}
 
 \pagenumbering{alph}
 \maketitle
 \onehalfspacing
 \frontmatter
-
 
 \pagenumbering{roman}
 \tableofcontents
@@ -50,8 +48,6 @@
 
 \chapter{Introduzione}
 
-% TODO: Mention that this is not a tutorial on OpenXR and refer to the official tutorial and documentation
-
 Lo scopo del progetto è sviluppare un wrapper (d'ora in poi chiamato XrBridge) attorno a OpenXR per permettere di sviluppare applicazioni che fanno uso di realtà virtuale e OpenGL in modo più semplice. XrBridge andrà a sostituire OvVR, un'implementazione simile già esistente sviluppata dal docente responsabile che fa uso di OpenVR. Dal momento che XrBridge verrà utilizzato nel corso di realtà virtuale (successore del corso di grafica), esso dovrà essere il più simile a OvVR possibile.
 
 Aver personalmente seguito sia il corso obligatorio di grafica e il corso opzionale di realtà virtuale mi ha permesso di meglio capire i requisiti del progetto, sia dal punto di vista del docente che dovrà lavorare con XrBridge durante il suo corso, sia dal punto di vista dello studente che dovrà sviluppare un progetto che verrà poi valutato facendo uso di XrBridge.
@@ -60,39 +56,68 @@ L'aspetto più importante di XrBridge (oltre al fatto che deve funzionare) è la
 
 Lo scopo del corso di realtà virtuale è sviluppare un'applicazione in C++ che fa uso di realtà virtuale senza utilizzare game engines interagendo direttamente con API di basso livello come OpenGL e OpenVR. Il corso opzionale di realtà virtuale si basa sul corso obligatorio di grafica, dove lo scopo è sviluppare un'applicazione grafica 3D (ad esempio un piccolo gioco) senza fare affidamento a game engines esistenti o strumenti simili. Gli studenti imparano ad utilizzare OpenGL e a sviluppare personalmente un game engine che dovranno poi utilizzare per sviluppare l'applicazione grafica. Il corso di realtà virtuale consiste, in poche parole, ad estendere l'applicazione grafica sviluppata nel corso di grafica per aggiungere la funzionalità di realtà virtuale.
 
+% TODO: Link to tutorial and doc
+Questo documento non si tratta di una guida dettagliata a OpenXR e saranno spiegati solamente i concetti principali essenziali per comprendere questo progetto. Per più informazioni su OpenXR, fare riferimento al tutorial e alla documentazioni.
+
+Inoltre, questo documento non spiega nel dettaglio ogni riga di codice presente all'interno del progetto, bensì può essere usato come accompagnamento. I dettagli di implementazioni sono visibili nel codice e commentati in modo approfondito.
+
 % TODO: Explain why the teacher wants to replace OpenVR with OpenXR
+
+\section{Pianificazione}
+
+Di seguito sono descritte tutte le fasi svolte per sviluppare il progetto. Avere un piano che non sia troppo dettagliato ma allo stesso tempo completo ha garantito molta flessibilità nello sviluppo e ha permesso di sempre avere in vista l'obiettivo e rispondere facilmente ai vari problemi che sono stati incontrati durante lo svolgimento del progetto.
+
+% TODO
+
+\begin{enumerate}
+  \item Analizzare l'approccio con la soluzione corrente già esistente di OvVR.
+  \item \textbf{Applicazione demo OpenXR}: Sviluppare un'applicazione semplice per comprendere il funzionamento e la struttura di OpenXR. Questa applicazione permetterà all'utente di utilizzare un visore di realtà virtuale e visualizzare un semplice cubo e sarà interamente contenuta in un singolo file. Per sviluppare questa applicazione è stato seguito il tutorial ufficiale di OpenXR.
+  \item \textbf{Definire struttura API}: Definire la struttura della API di XrBridge: inizializzazione, rendering, de-inizializzazione.
+  \item \textbf{Cleanup} Separare il codice specifico dell'applicazione di prova dal codice generico di OpenXR e spostare quet'ultimo in un file separato che diventerà poi la libreria XrBridge.
+  \item \textbf{Error handling}: Definire e implementare una gestione degli errori che sia semplice, intuitiva e funzionante.
+  \item \textbf{Logging}: Migliorare i messaggi output di XrBridge per permettere all'utente di meglio comprendere cosa sta succedendo dietro le quinte.
+  \item \textbf{Discutere con docente}: A questo punto si è discusso con il docente responsabile la qualità della soluzione sviluppata e quanto sia adatta al corso di realtà virtuale. Sono inoltre stati discussi parametri di default e altre opzioni per XrBridge. È molto importante che il docente dia feedback, poichè XrBridge dovrà essere utilizzato nelle lezioni del corso di realtà virtuale dal docente e dagli studenti.
+  \item \textbf{Linux}: La maggior parte dello sviluppo fino a questo punto è avvenuto su Windows ed è ora il momento di implementare il supporto per Linux.
+  \item \textbf{Documentazione API}: Una volta che la API di XrBridge è diventata stabile e finale, è stata scritta la documentazione utilizzando Doxygen.
+  \item \textbf{Test}: Infine sono stati eseguiti dei test per determinare se la soluzione prodotta soddisfi i requisiti e funzioni correttamente in risposta a vari scenari.
+\end{enumerate}
+
+Questo rapporto è stato scritto durante tutte le fasi del progetto.
 
 \section{Requisiti}
 
-\begin{center}
-  \begin{tabular}{ | m{1cm} | m{6cm} | m{6cm} | }
-    \hline
-    ID   & Descrizione & Note \\
-    \hline
-    R-01 & XrBridge deve supportare la API grafica OpenGL & - \\
-    \hline
-    R-02 & XrBridge deve supportare la piattaforma Linux & - \\
-    \hline
-    R-03 & XrBridge deve supportare la piattaforma Windows & - \\
-    \hline
-    R-04 & XrBridge deve supportare la runtime SteamVR & - \\
-    \hline
-    R-05 & XrBridge deve supportare OpenXR versione 1.1 & - \\
-    \hline
-    R-06 & La API di XrBridge deve essere chiara e semplice & Il più simile possibile a OvVR. \\
-    \hline
-    R-07 & XrBridge deve essere utilizzabile con C++ & Il corso di realtà virtuale si svolge utilizzando C++. \\
-    \hline
-    R-08 & XrBridge deve supportare head-mounted-displays & Visori di realtà virtuale da indossare oppure uno smartphone. Durante il corso di realtà virtuale si usa lo smartphone. \\
-    \hline
-    R-09 & La API deve permettere all'utente di reperire posizione e rotazione del visore & - \\
-    \hline
-    R-10 & La API deve permettere di rilevare l'input dall'utente & - \\
-    \hline
-    R-11 & XrBridge deve supportare la libreria grafica FreeGLUT & L'uso di FreeGLUT è richiesto dai corsi di grafica e realtà virtuale. \\
-    \hline
-  \end{tabular}
-\end{center}
+\begin{table}[H]
+  \caption{Requisiti del progetto}
+  \begin{center}
+    \begin{tabular}{ | m{1cm} | m{6cm} | m{6cm} | }
+      \hline
+      ID   & Descrizione & Note \\
+      \hline
+      R-01 & XrBridge deve supportare la API grafica OpenGL & - \\
+      \hline
+      R-02 & XrBridge deve supportare la piattaforma Linux & - \\
+      \hline
+      R-03 & XrBridge deve supportare la piattaforma Windows & - \\
+      \hline
+      R-04 & XrBridge deve supportare la runtime SteamVR & - \\
+      \hline
+      R-05 & XrBridge deve supportare OpenXR versione 1.1 & - \\
+      \hline
+      R-06 & La API di XrBridge deve essere chiara e semplice & Il più simile possibile a OvVR. \\
+      \hline
+      R-07 & XrBridge deve essere utilizzabile con C++ & Il corso di realtà virtuale si svolge utilizzando C++. \\
+      \hline
+      R-08 & XrBridge deve supportare head-mounted-displays & Visori di realtà virtuale da indossare oppure uno smartphone. Durante il corso di realtà virtuale si usa lo smartphone. \\
+      \hline
+      R-09 & La API deve permettere all'utente di reperire posizione e rotazione del visore & - \\
+      \hline
+      R-10 & La API deve permettere di rilevare l'input dall'utente & - \\
+      \hline
+      R-11 & XrBridge deve supportare la libreria grafica FreeGLUT & L'uso di FreeGLUT è richiesto dai corsi di grafica e realtà virtuale. \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{table}
 
 \chapter{Stato dell'arte}
 
@@ -136,7 +161,7 @@ Di seguito è riportato il flusso di esecuzione di XrBridge:
 
 Lo schema riporta le operazioni fondamentali necessarie per sviluppare un'applicazione grafica.
 
-Uno degli aspetti più importanti della API è la semplicità. È importante che l'utente che farà uso di XrBridge si possa concentrare il più possibile sullo sviluppare la propria applicazione invece di dover pensare ai dettagli di implementazione della libreria. Questo significa che la API deve esporre solamente metodi e parametri che sono assolutamente necessari per l'utente e null'altro. Per questo motivo, è stato scelto di avere un metodo per ogni operazione fondamentale (TODO: vedi schema): inizializzazione, aggiornamento dello stato, render e de-inizializzazione. In realtà, aggiornamento e render potrebbero essere raggruppati in un'unica operazione, ma è stato deciso di lasciarli separati (se l'applicazione è in pausa e perciò non deve mostrare nulla, ma deve comunque rimanere in ascolto di eventi?). I dettagli della API e dei metodi si trovano nella documentazione apposita.
+Uno degli aspetti più importanti della API è la semplicità. È importante che l'utente che farà uso di XrBridge si possa concentrare il più possibile sullo sviluppare la propria applicazione invece di dover pensare ai dettagli di implementazione della libreria. Questo significa che la API deve esporre solamente metodi e parametri che sono assolutamente necessari per l'utente e null'altro. Per questo motivo, è stato scelto di avere un metodo per ogni operazione fondamentale: inizializzazione, aggiornamento dello stato, render e de-inizializzazione. In realtà, aggiornamento e render potrebbero essere raggruppati in un'unica operazione, ma è stato deciso di lasciarli separati (se l'applicazione è in pausa e perciò non deve mostrare nulla, ma deve comunque rimanere in ascolto di eventi?). I dettagli della API e dei metodi si trovano nella documentazione apposita.
 
 XrBridge è stato implementato sotto forma di una singola classe, dove ogni metodo pubblico rappresenta una delle operazioni fondamentali. Per facilitare l'utilizzo di XrBridge, oltre che ad offrire una documentazione più dettagliata della API e un'applicazione di essempio che ne dimostra chiaramente l'utilizzo, ogni metodo ha dei controlli per assicurarsi che essi vengono chiamati nell'ordine giusto (per esempio per assicurarsi che l'utente abbia inizializzato XrBridge prima di renderizzare una scena).
 
@@ -237,9 +262,6 @@ Dal momento che XrBridge andrà a sostituire una libreria già in uso scritta in
 
 Inoltre, nessuno strumento specifico è necessario per sviluppare la libreria. Ogni strumento aggiuntivo serve unicamente per sviluppare l'applicazione
 
-% TODO: Ask Bruno what he wrote for this
-% TODO: Mention differences in image format support between Windows and Linux
-
 \section{OpenXR}
 
 \subsection{Documentazione}
@@ -317,15 +339,18 @@ Le estensioni, invece, permettono di aggiungere funzionalità extra a OpenXR. Al
 
 OpenXR fa uso di "graphic bindings", ovvero strutture che legano assieme una API grafica e una piattaforma. All'interno del codice, questi binding sono implementati sotto forma di struct. Esiste uno struct per ogni combinazione di API grafica (OpenGL, Vulkan, DirectX, ...) e piattaforma (Win32, X11, Wayland, ...) supportate e ogni struct richiede dei parametri legati alla piattaforma e alla API grafica scelta. Questi struct sono definiti nel file \texttt{openxr\_platform.h} della libreria OpenXR. Ecco alcuni esempi:
 
-\begin{center}
-  \begin{tabular}{ l l l }
-    API grafica & Piattaforma & Nome struct \\
-    \hline
-    OpenGL      & Windows         & \texttt{XrGraphicsBindingOpenGLWin32KHR} \\
-    OpenGL      & Linux (Xlib)    & \texttt{XrGraphicsBindingOpenGLXlibKHR} \\
-    OpenGL      & Linux (Wayland) & \texttt{XrGraphicsBindingOpenGLWaylandKHR}
-  \end{tabular}
-\end{center}
+\begin{table}[H]
+  \caption{Strutture per il binding grafico}
+  \begin{center}
+    \begin{tabular}{ l l l }
+      API grafica & Piattaforma & Nome struct \\
+      \hline
+      OpenGL      & Windows         & \texttt{XrGraphicsBindingOpenGLWin32KHR} \\
+      OpenGL      & Linux (Xlib)    & \texttt{XrGraphicsBindingOpenGLXlibKHR} \\
+      OpenGL      & Linux (Wayland) & \texttt{XrGraphicsBindingOpenGLWaylandKHR}
+    \end{tabular}
+  \end{center}
+\end{table}
 
 Durante l'inizializzazione di OpenXR, è compito dello sviluppatore istanziare e popolare uno di questi stuct per la piattaforma che so vuole utilizzare. I requisiri richiedono solamente il supporto per OpenGL su Windows e Linux. Di seguito sono descritti gli approcci all'implementazione dei binding richiesti.
 
@@ -373,6 +398,16 @@ Per quanto riguarda l'approccio X11, esistono due alternative: utilizzare la lib
 
 I parametri \texttt{xDisplay}, \texttt{glxDrawable} e \texttt{glxContext} sono facilmente reperibili utilizzando le funzioni \texttt{glXGetCurrentDisplay}, \texttt{glXGetCurrentDrawable} e \texttt{glXGetCurrentContext} rispettivamente. Il problema sono i parametri \texttt{visualid} e \texttt{glxFBConfig}. Anche questi sono parametri che sono configurati da FreeGLUT ma non sono esposti e non esiste un modo per recuperarli come è possibile per i parametri precedenti.
 
+\subsection{Istanze e sessioni}
+
+OpenXR fa distinzione fra un'istanza e una sessione. Mentre un'istanza è semplicemente una connessione a OpenXR che viene creata una volta all'avvio dell'applicazione e terminata alla fine, una sessione è più complessa. Una sessione può essere terminata e ripresa in qualiasi momento ma, in qualsiasi momento, esiste una sola sessione per istanza e una sola istanza per istanza di XrBridge. L'istanza di OpenXR è creata nel metodo \texttt{bool init()} e distrutta nel metodo \texttt{bool free()}.
+
+Alcuni elementi, come ad esempio lo spazio di riferimento (TODO: See chapter) e le swapchain (TODO: See chapter), sono legati alla sessione e perciò verranno creati e distrutti assieme alla sessione.
+
+L'inizio e la fine di una sessione è deciso interamente dalla runtime ed è comunicato all'applicazione attraverso degli eventi. Il metodo \texttt{bool update()} si occupa proprio di rispondere ai vari eventi generati da OpenXR, incluso l'inizio e la fine della sessione.
+
+Appena viene ricevuto un evento di inizio o fine sessione, viene chiamato il metodo \texttt{bool begin\_session()} o \texttt{bool end\_session()} rispettivamente.
+
 \subsection{Swapchain}
 
 Una swapchain in OpenXR è una serie di una o più immagini utilizzate per il rendering, dove il numero di immagini in una swapchain dipende dalla configurazione della runtime. Per esempio, se la runtime è configurata per utilizzare la tecnica \textit{double buffering}, una swapchain sarà composta di 2 immagini, mentre se la runtime utilizza il \textit{triple buffering}, le swapchain avranno 3 immagini.
@@ -383,21 +418,47 @@ Un'applicazione VR può avere una o più "view", dove una view consiste in una "
 
 Quando è il momento di renderizzare, l'utente deve richiedere alla runtime quale immagine di una swapchain deve utilizzare; la runtime risponderà con un indice. Se, per esempio, una swapchain ha 3 immagini, la runtime ritornerà all'utente un indice 0, 1 o 2. L'utente può quindi utilizzare quella immagine per renderizzare. Una volta finito, l'utente "rilascia" l'immagine alla runtime che si occuperà poi di mostrare l'immagine sul visore VR. Al prossimo ciclo di rendering, la runtime fornirà un'altra immagine all'utente da utilizzare. Dalle mie osservazioni di SteamVR, l'ordine delle imagini fornite è: 0, 1, 2, 0, 1, 2, 0, 1, 2, ...
 
-% TODO: Include a diagram of swapchains
-% TODO: Should I include examples of code for creating a swapchain?
+\begin{figure}[h]
+  \caption{Struttura di swapchain e view per un Head Mounted Display / 2 swapchain, 3 view per swapchain}
+  \centering
+  \includegraphics[scale=0.3]{resources/swapchains.png}
+\end{figure}
 
 Per comodità, all'interno del codice, è stata definita una struttura creativamente chiamata \texttt{Swapchain} la quale aiuta a semplificare il codice legando assieme i vari componenti di una swapchain: la lista delle immagini, la dimensione delle immagini e la struttura \texttt{XrSwapchain} di OpenXR.
 
 Le swapchain vengono istanziate quando una sessione di OpenXR inizia, all'interno del metodo \texttt{bool begin\_session()}; una swapchain per view. Qui vengono create e configurate tutte le swapchain necessarie. Il metodo \texttt{shared\_ptr<Fbo> create\_fbo(GLuint w, GLuint h)} si occupa di generare le immagini (FBO = Frame Buffer Object) necessarie per le swapchain. Quest'ultimo fa affidamento alla classe \texttt{Fbo} già creata e utilizzata nel corso di realtà virtuale dal docente responsabile. Questa classe consiste in un wrapper attorno agli FBO di OpenGL e ne semplifica l'utilizzo. Grazie a questo, gli utenti avranno meno difficoltà quando dovranno utilizzare i framebuffer durante il rendering.
 
+% TODO: https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrViewConfigurationType.html
+Il numero di swapchain è deciso in base alla \textit{view configuration type}. I due tipi di configurazione principali sono \textit{mono} e \textit{stereo}. Mono significa una singola view; questo è il caso per un'applicazione di realtà aumentata, dove l'unica view è presa dalla telecamera del dispositivo e gli oggetti virtuali vengono sovrapposti al mondo reale. Stereo, invece, indica due view. Questo è il caso di un visore di realtà virtuale da indossare (effettivamente degli occhiali) e richiede 2 view: una per l'occhio sinistro e una per l'occhio destro. XrBridge supporta solamente la configurazione stereo; è possibile però modificare il tipo di configurazione apportando poche e piccole modifiche. Questa configurazione è fatta all'inizio del metodo \texttt{bool begin\_session()}.
+
 I framebuffer generati sono composti da una texture generata da OpenXR e il cui formato è specificato dall'utente (TODO: vedi capitolo Differenze fra piattaforme Windows e Linux) e un buffer di profondità.
 
 \subsection{Spazio di riferimento}
 
-In OpenXR, lo spazio di riferimento (\texttt{XrSpace}) è il sistema con cui un'applicazione VR tiene traccia della posizione e rotazione del mondo reale.
+In OpenXR, lo spazio di riferimento (\texttt{XrReferenceSpaceType}) è il sistema con cui un'applicazione VR tiene traccia della posizione e rotazione del mondo reale.
 
-% TODO: Talk about the different reference spaces
+% TODO: Explain what type of reference space is used by default
+Nel codice, lo spazio di riferimento è configurato durante la creazione di una sessione, alla fine del metodo \texttt{bool begin\_session()} dopo la creazione delle swapchain. Lo spazio di riferimento utilizzato può essere configurato attraverso la variabile \texttt{XRBRIDGE\_CONFIG\_SPACE} nella sezione di configurazione iniziale in \texttt{xrbridge.cpp}.
+
+Di seguito sono riportati i principali spazi di riferimento disponibili in OpenXR senza fare uso di estensioni:
+
+% TODO
+\begin{table}[H]
+  \caption{Tipi di spazi di riferimento}
+  \begin{center}
+    \begin{tabular}{ m{7cm} m{6cm} }
+      Nome                                             & Descrizione \\
+      \hline
+      \texttt{XR\_REFERENCE\_SPACE\_TYPE\_VIEW}        & - \\
+      \texttt{XR\_REFERENCE\_SPACE\_TYPE\_LOCAL}       & - \\
+      \texttt{XR\_REFERENCE\_SPACE\_TYPE\_STAGE}       & - \\
+      \texttt{XR\_REFERENCE\_SPACE\_TYPE\_LOCAL\_FLOOR} & Non disponibilie nella versione 1.0 di OpenXR. \\
+    \end{tabular}
+  \end{center}
+\end{table}
+
 % TODO: https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
+Per una descrizione più dettagliata, fare riferimento alla documentazione ufficiale.
 
 \section{Limitazioni di FreeGLUT}
 
@@ -446,65 +507,192 @@ Ci sono alcune importanti differenze fra le piattafrome Windows e Linux che hann
 
 Quando si tratta di generare i framebuffers per ogni view/occhio, è possibile specificare il formato dell'immagine desiderato (es: GL\_RGBA16F, GL\_SRGB8, ...). Il formato dipende fortemente dalla API grafica scelta e la runtime, dal momento che OpenXR non specifica alcun formato di default.
 
-Una delle difficoltà riscontrate durante lo sviluppo, è il fatto che SteamVR supporta formati diversi a seconda della piattaforma. Di seguito sono elencati i formati supportati da SteamVR sulle piattaforme principali dalla versione attuale di SteamVR: % TODO: Which version?
+Una delle difficoltà riscontrate durante lo sviluppo, è il fatto che SteamVR supporta formati diversi a seconda della piattaforma. Di seguito sono elencati alcuni dei formati supportati da SteamVR sulle piattaforme principali dalla versione attuale di SteamVR (2.7.4 su Windows e Linux; non sono state verificate le versioni beta):
 
-% TODO: List which formats are available on SteamVR on Windows and Linux
-\begin{center}
-  \begin{tabular}{ l l l }
-    Formato     & Windows & Linux \\
-    \hline
-    GL\_RGBA16F & Sì      & No    \\
-    GL\_SRGB8   & Sì      & Sì    \\
-  \end{tabular}
-\end{center}
+\begin{table}[H]
+  \caption{Formati immagine di OpenGL supportati da SteamVR}
+  \begin{center}
+    \begin{tabular}{ l l l }
+      Formato                    & Windows & Linux \\
+      \hline
+      \texttt{GL\_RGB8}          & No      & No    \\
+      \texttt{GL\_RGB16}         & No      & No    \\
+      \texttt{GL\_RGBA8}         & No      & No    \\
+      \texttt{GL\_RGBA16}        & Sì      & No    \\
+      \texttt{GL\_RGB8\_SNORM}   & No      & No    \\
+      \texttt{GL\_RGB16\_SNORM}  & No      & No    \\
+      \texttt{GL\_RGBA8\_SNORM}  & No      & No    \\
+      \texttt{GL\_RGBA16\_SNORM} & No      & No    \\
+      \texttt{GL\_RGB16F}        & Sì      & No    \\
+      \texttt{GL\_RGB32F}        & No      & No    \\
+      \texttt{GL\_RGBA16F}       & Sì      & No    \\
+      \texttt{GL\_RGBA32F}       & No      & No    \\
+      \texttt{GL\_RGB8I}         & No      & No    \\
+      \texttt{GL\_RGB16I}        & No      & No    \\
+      \texttt{GL\_RGB32I}        & No      & No    \\
+      \texttt{GL\_RGB8UI}        & No      & No    \\
+      \texttt{GL\_RGB16UI}       & No      & No    \\
+      \texttt{GL\_RGB32UI}       & No      & No    \\
+      \texttt{GL\_RGBA8I}        & No      & No    \\
+      \texttt{GL\_RGBA16I}       & No      & No    \\
+      \texttt{GL\_RGBA32I}       & No      & No    \\
+      \texttt{GL\_RGBA8UI}       & No      & No    \\
+      \texttt{GL\_RGBA16UI}      & No      & No    \\
+      \texttt{GL\_RGBA32UI}      & No      & No    \\
+      \texttt{GL\_SRGB8}         & Sì      & Sì    \\
+      \texttt{GL\_SRGB8\_ALPHA8} & Sì      & Sì    \\
+      \texttt{GL\_RGB9\_E5}      & No      & No    \\
+    \end{tabular}
+  \end{center}
+\end{table}
 
 SteamVR è costantemente aggiornato e, perciò, è molto probabile che in futuro i formati supportati cambino.
+
+Scegliere un formato non supportato causerà l'errore \texttt{XR\_ERROR\_SWAPCHAIN\_FORMAT\_UNSUPPORTED} (-26).
 
 A causa di queste differenze, è stato deciso di permettere all'utente di specificare il formato per piattaforma invece di avere una singola configurazione globale.
 
 Nella sezione di configurazione di XrBridge (all'inizio del file \texttt{xrbridge.cpp}) è possibile specificare il formato con le variabili \texttt{XRBRIDGE\_CONFIG\_SWAPCHAIN\_FORMAT\_WINDOWS} e \texttt{XRBRIDGE\_CONFIG\_SWAPCHAIN\_FORMAT\_LINUX}.
 
+\section{Strumenti, librerie e versioni}
+
+Di seguito sono riportate le versioni di tutti gli strumenti, software e librerie utilizzate per il progetto. Non sono necessariamente richieste le stesse identiche versioni per eseguire l'applicazione di demo o per utilizzare XrBridge.
+
+% TODO: Check versions on actual Linux dev system
+\begin{table}[H]
+  \caption{Versioni di strumenti e librerie utilizzati}
+  \begin{center}
+    \begin{tabular}{ m{4cm} m{2cm} m{7cm} }
+      Strumento & Versione & Note \\
+      \hline
+      ALVR & 20.8.0 & Software per Windows e Linux che permette di utilizzare un dispositivo Android come un headset. \\
+      PhoneVR & 2.0.0 & Software per Android che permette di utilizzare un dispositivo Android come un headset. \\
+      SteamVR & 2.7.4 & Runtime di OpenXR sviluppata da Valve. \\
+      Visual Studio Community 2022 & 17.11.1 & IDE per sviluppare su Windows. \\
+      Code::Blocks & svn-r13524 & IDE per sviluppare su Linux. \\
+      Windows 11 & TODO & Piattaforma di sviluppo Windows. \\
+      Fedora 40 KDE & 6.10.6 & Piattaforma di sviluppo Linux. \\
+      OpenXR & 1.0.0 & Versione di OpenXR utilizzata per sviluppare XrBridge. \\
+      FreeGLUT & 3.6.0 & Libreria di supporto per OpenGL (utilizzata sia su Windows sia per la versione modificata per Linux). \\
+      GLEW & 2.1.0 & Libreria di supporto per OpenGL (Windows). \\
+      GLEW (glew) & 2.2.0 & Libreria di supporto per OpenGL (Linux). \\
+      GLM & 1.0.1 & Libreria matematica per OpenGL (Windows).\\
+      GLM (glm-devel) & 0.9.9 & Libreria matematica per OpenGL (Linux). \\
+      OpenXR Loader & 1.1.37 & Loader per OpenXR (Windows, compilato manualmente). \\
+      OpenXR Loader (openxr, openxr-devel) & 1.0.33 & Loader per OpenXR (Linux). \\
+      Nvidia GTX 970 & & GPU utilizzata. \\
+      Nvidia & 555.58.03 & Driver video per Nvidia. \\
+    \end{tabular}
+  \end{center}
+\end{table}
+
 \chapter{Risultati}
+
+% TODO: Talk about what requirements have been completed
+
+\section{Manuale d'uso}
+
+Di seguito verrà spiegato nel dettaglio come utilizzare XrBridge in un progetto reale. Nel caso di difficoltà, è possibile utilizzare l'applicazione di demo come base per lo sviluppo. L'applicazione di demo ha un progetto per Visual Studio 2022 e Code::Blocks. Questa sezione è principalmente mirata al docente responsabile.
+
+\subsection{Dipendenze}
+
+XrBridge fa uso delle seguenti dipendenze \textbf{obbligatorie}:
+
+% TODO: Define C++ version
+\begin{itemize}
+  \item \textbf{Libreria standard di C++}: XrBridge utilizza alcune funzionalità dalla libreria standard di C++. È sufficiente assicurarsi di utilizzare un'implementazione completa di C++ XX (TODO:Version).
+  \item \textbf{GLM}: GLM si tratta di una libreria matematica per facilitare lo sviluppo con OpenGL. XrBridge fa uso di questa libreria per calcolare le matrici di view e proiezione da utilizzare per il rendering.
+  \item \textbf{GLEW}: GLEW è una libreria che permette di utilizzare funzionalità più avanzate di OpenGL.
+  \item \textbf{FreeGLUT}: FreeGLUT è una libreria che permette di creare finestre, ricevere input e gestire contesti di OpenGL. Questa libreria si occupa di creare il contesto di OpenGL, dal quale sono necessari alcuni parametri importanti.
+  \item \textbf{Fbo}: XrBridge fa affidamento alla classe \texttt{Fbo} sviluppata dal docente responabile per facilitare la gestione dei framebuffers di OpenGL.
+  \item \textbf{OpenXR}: XrBridge è stato sviluppato basandosi sulla versione di OpenXR 1.0.0 per permettere una maggiore compatibilità. È possibilie utilizzare versioni più recenti se desiderato.
+  \item \textbf{Win32}: Per Windows, è necessario acesso alla API di Windows (\texttt{Windows.h}). Questa libreria dovrebbe esere già presente.
+  \item \textbf{Xlib}: Per Linux, è necessaria la libreria Xlib per interagire con X11. Per utilizzare XrBridge su Wayland, è possibile utilizzare XWayland.
+\end{itemize}
+
+% TODO: Reference version table
+Per quanto riguarda le versioni delle librerie, fare riferimento alla tabella apposita. Notare che non è sempre necessario avere la verione esatta di una libreria.
+
+Per quanto riguarda Windows, sono già fornite tutte le dipendenze necesarie assieme all'applicazione di demo. È possibile utilizzare le librerie fornite.
+
+% TODO: Reference version table
+Su Linux, invece, è possibile utilizzare il package manager della distribuzione scelta. Per questo progetto, è stato utilizzato DNF, parte di Fedora 40. Nella tabella delle versioni è specificato il nome del pacchetto su Fedora.
+
+\subsection{Setup del progetto}
+
+È possibile utilizzare qualsiasi IDE per sviluppare un'appicazione con XrBridge; oppure nessuna. Per sviluppare l'applicazione di demo su Windows è stato utilizzato Visual Studio e Code::Blocks su Linux.
+
+Il primo passo è creare un progetto e importare XrBridge. È sufficiente copiare i file \texttt{xrbridge.cpp}, \texttt{xrbridge.hpp}, \texttt{fbo.cpp} e \texttt{fbo.h} all'interno del progetto.
+
+Il compilatore genererà reclamerà per la mancanza delle dipendenze. A questo punto aggiungere le ipendenze necessarie (FreeGLUT, GLFW, OpenXR, GLM, ...). È importante ricordarsi che su Linux è necessario utilizzare la versione modificata di FreeGLUT.
+
+Se si utilizza Visual Studio, è possibile incontrare un errore relativo all'uso della funzione non sicura \texttt{std::strncpy}. Per risolvere questo problema, definire a la macro \texttt{\_CRT\_SECURE\_NO\_WARNINGS} a livello di progetto (non necessita di nessun valore, è sufficiente che sia definita). In alternativa, aggiungere \texttt{\#define \_CRT\_SECURE\_NO\_WARNINGS} all'inizio del file \texttt{xrbridge.cpp}.
+
+Se si desidera attivare l'output di debug è sufficiente definire la macro \texttt{XRBRIDGE\_DEBUG} a livello di progetto.
+
+Come ultima cosa è necessario scegliere la piattaforma da utilizzare. Per compilare XrBridge con supporto per Winows, definire la macro \texttt{XRBRIDGE\_PLATFORM\_WINDOWS}, mentre definire \texttt{XRBRIDGE\_PLATFORM\_X11} per Linux. Anche queste macro sono da definire a livello di progetto. XrBridge non si compila se una macro non viene definita; si genererà un errore che menziona come \texttt{graphics\_binding} non è stato definito.
+
+\subsection{Codice}
+
+Per poter accedere alle funzionalità di XrBridge nel codice, è necessario includere il file appropriato:
+
+\begin{verbatim}
+  #include "xrbridge.hpp"
+\end{verbatim}
+
+Questo darà accesso alla classe \texttt{XrBridge}. Tutte le funzionalità necessarie sono contenute qui.
+
+È fondamentale inizializzare il FreeGLUT e il contesto OpenGL \textbf{prima} di utilizzare XrBridge!
+
+In seguito, si crea un'istanza di XrBridge e la si inizializza:
+
+\begin{verbatim}
+  XrBridge xrbridge;
+  if (xrbridge.init("XrBridge Demo") == false)
+  {
+    // Error handling ...
+  }
+\end{verbatim}
+
+Nel caso l'inizializzazione fallisca, l'oggetto XrBridge non sarà utilizzabile. Un fallimento in questo caso è probabilmente dovuto ad un errore di configurazione dell'ambiente dell'utente. Analizzare l'errore riportato a terminale, risolvere il problema e riprovare.
+
+La stringa passata al metodo \texttt{init} non è di molta importanza. Nel caso di SteamVR, questa sarà usata come titolo dell'applicazione che verrà mostrata a schermo e non influisce sull'esecuzione dell'applicazione.
+
+Opzionalmente, configurare i clipping planes che verranno utilizzati per generare le matrici di proiezione. Questo passo può essere eseguito in qualunque momento e per quante volte si desidera (fare questo durante il render potrebbe creare artefatti grafici indesiderati):
+
+\begin{verbatim}
+  xrbridge.set_clipping_planes(0.1f, 65'536.0f);
+\end{verbatim}
+
+% TODO
+
+Per ultimo, ricordarsi di liberare tutte le risorse utilizzate:
+
+\begin{verbatim}
+  xrbridge.free();
+\end{verbatim}
+
+Dopo questo, l'istanza di XrBridge non sarà più utilizzabile. Riavviare l'applicazione o creare una nuova istanza se desiderato.
+
+\begin{quote}
+  Attenzione! Questo passo va eseguito \textbf{prima} di eliminare il contesto OpenGL!
+\end{quote}
+
+
+\subsection{Runtime}
+
+\section{XrBridge vs OvVR}
 
 % TODO: Compare XrBridge to OvVR with example code
 
+\section{Test}
+
 \chapter{Conclusioni}
-
-\subsection{Applicazione di test}
-
-Dal momento che il progetto consiste nello sviluppare una libreria, sarà necessario un'applicazione che farà uso di XrBridge. Questa applicazione avrà il doppio scopo di aiutare nello sviluppo e test della libreria e
-% TODO: Since I'm developing a library, I need a testing application
-
-\section{Sezione}
 
 \lipsum[23]
 Esempio di citazione \cite{4538384}, \cite{5357331,4523385}, \cite{1705631}.
 \footnote{Questa \`e una nota a pi\'e di pagina.}
 \footnote{Questa \`e un'altra nota a pi\'e di pagina.}
-
-%Un po' di matematica: \newline
-%
-%\begin{math}
-%\frac{n!}{k!(n-k)!} = {n \choose k}
-%\end{math} \newline
-%
-%Un po' di matematica centrata:
-%
-%\begin{center}
-%\begin{math}
-%\frac{n!}{k!(n-k)!} = {n \choose k}
-%\end{math}
-%\end{center}
-%
-%Oppure con \$\$
-%
-%$$
-%\frac{n!}{k!(n-k)!} = {n \choose k}
-%$$
-%
-%Oppure anche direttamente nel testo ${1}\over{n}$ \\
-%
-%\lipsum[23]
 
 \bibliographystyle{unsrt}
 \bibliography{bibliografia}
