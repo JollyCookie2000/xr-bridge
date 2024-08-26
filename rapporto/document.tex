@@ -582,6 +582,8 @@ Di seguito sono riportate le versioni di tutti gli strumenti, software e libreri
       OpenXR Loader (openxr, openxr-devel) & 1.0.33 & Loader per OpenXR (Linux). \\
       Nvidia GTX 970 & & GPU utilizzata. \\
       Nvidia & 555.58.03 & Driver video per Nvidia. \\
+      HTC Vive & & Visore VR. \\
+      Samsung Galaxy Note 8 & Android 9 & Dispositivo Android usato come visore VR. \\
     \end{tabular}
   \end{center}
 \end{table}
@@ -598,9 +600,8 @@ Di seguito verrà spiegato nel dettaglio come utilizzare XrBridge in un progetto
 
 XrBridge fa uso delle seguenti dipendenze \textbf{obbligatorie}:
 
-% TODO: Define C++ version
 \begin{itemize}
-  \item \textbf{Libreria standard di C++}: XrBridge utilizza alcune funzionalità dalla libreria standard di C++. È sufficiente assicurarsi di utilizzare un'implementazione completa di C++ XX (TODO:Version).
+  \item \textbf{Libreria standard di C++ 14}: XrBridge utilizza alcune funzionalità dalla libreria standard di C++. È sufficiente assicurarsi di utilizzare un'implementazione completa di C++ 14.
   \item \textbf{GLM}: GLM si tratta di una libreria matematica per facilitare lo sviluppo con OpenGL. XrBridge fa uso di questa libreria per calcolare le matrici di view e proiezione da utilizzare per il rendering.
   \item \textbf{GLEW}: GLEW è una libreria che permette di utilizzare funzionalità più avanzate di OpenGL.
   \item \textbf{FreeGLUT}: FreeGLUT è una libreria che permette di creare finestre, ricevere input e gestire contesti di OpenGL. Questa libreria si occupa di creare il contesto di OpenGL, dal quale sono necessari alcuni parametri importanti.
@@ -661,10 +662,64 @@ La stringa passata al metodo \texttt{init} non è di molta importanza. Nel caso 
 Opzionalmente, configurare i clipping planes che verranno utilizzati per generare le matrici di proiezione. Questo passo può essere eseguito in qualunque momento e per quante volte si desidera (fare questo durante il render potrebbe creare artefatti grafici indesiderati):
 
 \begin{verbatim}
+  // Near clipping plane: 1.0f
+  // Fat clipping plane:  65'536.0f
   xrbridge.set_clipping_planes(0.1f, 65'536.0f);
 \end{verbatim}
 
-% TODO
+È ora il momento di implementare la parte principale di XrBridge: il rendering. I seguenti due passi dovranno essere eseguiti di continuo, ogni frame e per la durata dell'applicazione.
+
+Prima di renderizzare, è necessario chiamare il metodo \texttt{update()}. Questo permette di gestire le sessioni di OpenXR:
+
+\begin{verbatim}
+  if (xrbridge.update() == false)
+  {
+    // Error handling ...
+  }
+\end{verbatim}
+
+Nel caso di un errore, è necessario terminare l'applicazione, poichè l'istanza di XrBridge sarà potenzialmente in uno stato non valido.
+
+A questo punto è finalmente il momento di renderizzare la scena. Per fare questo, è necessario chiamare il metodo \texttt{render()} e passare come parametro una funzione di render. Nel seguente esempio e nell'applicazione di demo viene utilizzata una lambda, poichè è l'approccio più semplice; mettendo \texttt{\&} nella lista di cattura permette di avere accesso a tutte le variabili definite in precedenza che, in un'applicazione reale, potrebbe trattarsi della lista di render o simili parametri.
+
+La funzione di render deve, come nell'esempio, accettare una serie di parametri (fare riferimento alla documentazione della API per più dettagli):
+
+\begin{itemize}
+  \item \texttt{XrBridge::Eye eye}: La funzione di render verrà eseguita per ogni occhio. Questo enum indica l'occhio che sta venendo attualmente renderizzato. Evitare di renderizzare scene diverse per i due occhi; questo potrebbe causare disconforto per gli utenti!
+  \item \texttt{std::shared\_ptr<Fbo>fbo}: Questo è il framebuffer di OpenGL da utilizzare per renderizzare la scena. XrBridge non esegue il binding in automatico e deve perciò essere fatto manualmente.
+  \item \texttt{glm::mat4 projection\_matrix}: Questa è la matrice di proiezione da utilizzare. Questa matrice è generata a XrBridge utilizzando GLM per creare una matrice di prospettiva e utilizzando i clipping planes configurati in precedenza.
+  \item \texttt{glm::mat4 view\_matrix}: Questa è la matrice di view, la quale contiene posizione e rotazione dell'utente.
+  \item \texttt{uint32\_t width} e \texttt{uint32\_t height}: Questi due parametri indicano la dimensione del framebuffer attualmente in uso. Nella maggior parte dei casi, questi parametri aranno probabilmente inutili.
+\end{itemize}
+
+Una volta eseguito il binding del framebuffer e aver pulito il suo contenuto, è finalmente il momento di renderizzare la scena.
+
+\begin{verbatim}
+  const bool did_render = xrbridge.render([&] (
+    const XrBridge::Eye eye,
+    std::shared_ptr<Fbo> fbo,
+    const glm::mat4 projection_matrix,
+    const glm::mat4 view_matrix,
+    const uint32_t width,
+    const uint32_t height) {
+
+    // Bind the FBO
+    fbo->render();
+
+    // Clear the FBO
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Render scene ...
+  });
+
+  if (did_render == false)
+  {
+    // Error handling ...
+  }
+\end{verbatim}
+
+È possibile facilmente modificare XrBridge per passare più parametri alla funzione di render se così desiderato.
 
 Per ultimo, ricordarsi di liberare tutte le risorse utilizzate:
 
@@ -678,10 +733,13 @@ Dopo questo, l'istanza di XrBridge non sarà più utilizzabile. Riavviare l'appl
   Attenzione! Questo passo va eseguito \textbf{prima} di eliminare il contesto OpenGL!
 \end{quote}
 
-
 \subsection{Runtime}
 
+L'implementazione vera e propria di OpenXR è offerta dalla runtime. Questo progetto è stato sviluppato utilizzando solamente SteamVR. Dovrebbe, però, essere possibile utilizzare qualsiasi runtime che implementa OpenXR correttamente. SteamVR è sviluppato da Valve ed è scaricabile attraverso Steam.
+
 \section{XrBridge vs OvVR}
+
+In questa sezione XrBridge verrà confrontato con OvVR grazie ad un'applicazione di esempio per entrambi i casi.
 
 % TODO: Compare XrBridge to OvVR with example code
 
