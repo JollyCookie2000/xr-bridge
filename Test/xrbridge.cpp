@@ -7,7 +7,7 @@
 
 // The type of reference space.
 // https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrReferenceSpaceType.html
-#define XRBRIDGE_CONFIG_SPACE XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_LOCAL
+#define XRBRIDGE_CONFIG_SPACE XrReferenceSpaceType::XR_REFERENCE_SPACE_TYPE_STAGE
 
 // The OpenXR version to use.
 #define XRBRIDGE_CONFIG_OPENXR_VERSION XR_MAKE_VERSION(1, 0, 0);
