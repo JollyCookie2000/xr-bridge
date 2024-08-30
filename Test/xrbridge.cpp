@@ -690,9 +690,8 @@ bool XrBridge::begin_session()
 		XrSwapchainCreateInfo swapchain_create_info = {};
 		swapchain_create_info.type = XrStructureType::XR_TYPE_SWAPCHAIN_CREATE_INFO;
 		swapchain_create_info.createFlags = NULL_FLAG;
-		// TODO: Is XR_SWAPCHAIN_USAGE_SAMPLED_BIT actually necessary?
-		// TODO: Apparently, OpenGL ignores these. If so, remove them.
-		swapchain_create_info.usageFlags = XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT;
+		// OpenGL does not support usage flags.
+		swapchain_create_info.usageFlags = NULL_FLAG;
 		swapchain_create_info.format = XRBRIDGE_SWAPCHAIN_FORMAT;
 		swapchain_create_info.width = view_configuration_view.recommendedImageRectWidth;
 		swapchain_create_info.height = view_configuration_view.recommendedImageRectHeight;
