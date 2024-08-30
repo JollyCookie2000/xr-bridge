@@ -20,7 +20,7 @@
 
 // Platform-specific includes
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
-    #include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
+	#include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.
 #endif
 #ifdef XRBRIDGE_PLATFORM_X11
 	#include <GL/freeglut_globals.h>
@@ -101,6 +101,45 @@
 	#define XRBRIDGE_SWAPCHAIN_FORMAT XRBRIDGE_CONFIG_SWAPCHAIN_FORMAT_LINUX
 #endif
 
+// Source: https://openxr-tutorial.com/linux/opengl/_downloads/f4aef9ec726fccc71e105bc0830d4ff3/xr_linear_algebra.h
+// XrMatrix4x4f_CreateProjectionFov
+// XrMatrix4x4f_CreateProjection
+// We have to use a custom projection function because glm::projection does not handle
+// fov the way we need it to.
+static glm::mat4 create_projection_matrix(const XrFovf fov, const float near_clipping_plane, const float far_clipping_plane)
+{
+	const float tan_left = std::tanf(fov.angleLeft);
+	const float tan_right = std::tanf(fov.angleRight);
+	const float tan_down = std::tanf(fov.angleDown);
+	const float tan_up = std::tanf(fov.angleUp);
+	const float tan_width = tan_right - tan_left;
+	const float tan_height = tan_up - tan_down;
+
+	glm::mat4 result = glm::mat4(
+		2.0f / tan_width,
+		0.0f,
+		0.0f,
+		0.0f,
+
+		0.0f,
+		2.0f / tan_height,
+		0.0f,
+		0.0f,
+
+		(tan_right + tan_left) / tan_width,
+		(tan_up + tan_down) / tan_height,
+		-(near_clipping_plane + far_clipping_plane) / (far_clipping_plane - near_clipping_plane),
+		-1.0f,
+
+		0.0f,
+		0.0f,
+		-(2.0f * near_clipping_plane * far_clipping_plane) / (far_clipping_plane - near_clipping_plane),
+		0.0f
+	);
+
+	return result;
+}
+
 static bool check_openxr_result(const XrInstance instance, const XrResult result)
 {
 	if (result != XrResult::XR_SUCCESS)
@@ -174,17 +213,17 @@ static bool is_extension_supported(const std::string& extension_name)
 }
 
 XrBridge::XrBridge() :
-	is_currently_rendering_flag { false },
-	is_already_initialized_flag { false },
-	is_already_deinitialized_flag { false },
-	near_clipping_plane { 0.1f },
-	far_clipping_plane { 65'536.0f },
-	instance { XR_NULL_HANDLE },
-	system_id { XR_NULL_SYSTEM_ID },
-	session { XR_NULL_HANDLE },
-	session_state { XrSessionState::XR_SESSION_STATE_UNKNOWN },
-	swapchains { },
-	space { XR_NULL_HANDLE }
+	is_currently_rendering_flag{ false },
+	is_already_initialized_flag{ false },
+	is_already_deinitialized_flag{ false },
+	near_clipping_plane{ 0.1f },
+	far_clipping_plane{ 65'536.0f },
+	instance{ XR_NULL_HANDLE },
+	system_id{ XR_NULL_SYSTEM_ID },
+	session{ XR_NULL_HANDLE },
+	session_state{ XrSessionState::XR_SESSION_STATE_UNKNOWN },
+	swapchains{ },
+	space{ XR_NULL_HANDLE }
 {
 }
 
@@ -570,16 +609,22 @@ bool XrBridge::render(const render_function_t render_function)
 			const Eye eye = view_index == 0 ? Eye::LEFT : Eye::RIGHT;
 			const float aspect_ratio = static_cast<float>(current_swapchain.width) / static_cast<float>(current_swapchain.height);
 
-			const glm::mat4 projection_matrix = glm::perspective(
-				current_view.fov.angleUp - current_view.fov.angleDown,
-				aspect_ratio,
+			// Create the projection matrix
+			const glm::mat4 projection_matrix = create_projection_matrix(
+				current_view.fov,
 				this->near_clipping_plane,
 				this->far_clipping_plane);
-			glm::quat quaternion(current_view.pose.orientation.w, current_view.pose.orientation.x, current_view.pose.orientation.y, current_view.pose.orientation.z);
-			const glm::mat4 view_matrix = glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position)) * glm::mat4_cast(quaternion);
 
+			// Create the view matrix
+			const glm::quat quaternion = glm::quat(current_view.pose.orientation.w, current_view.pose.orientation.x, current_view.pose.orientation.y, current_view.pose.orientation.z);
+			const glm::mat4 rotation_matrix = glm::mat4_cast(quaternion);
+			const glm::mat4 translation_matrix = glm::translate(glm::mat4(1.0f), XRV_TO_GV(current_view.pose.position));
+			const glm::mat4 view_matrix = translation_matrix * rotation_matrix;
+
+			// Get the FBO
 			const std::shared_ptr<Fbo> fbo = current_swapchain.framebuffers.at(image_index);
 
+			// Call the user-defined render function
 			render_function(eye, fbo, projection_matrix, view_matrix, current_swapchain.width, current_swapchain.height);
 
 			XrSwapchainImageReleaseInfo swapchain_image_release_info = {};
@@ -587,12 +632,8 @@ bool XrBridge::render(const render_function_t render_function)
 			RETURN_FALSE_ON_OXR_ERROR(xrReleaseSwapchainImage(current_swapchain.swapchain, &swapchain_image_release_info), "Failed to release swapchain image.");
 		}
 
-		Fbo::disable();
-
 		composition_layer_projection.viewCount = static_cast<uint32_t>(composition_layer_projection_views.size());
 		composition_layer_projection.views = composition_layer_projection_views.data();
-
-		// NOTE: You can add more layers here.
 	}
 
 	if (did_render)
