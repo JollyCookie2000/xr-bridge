@@ -25,11 +25,10 @@ int main(int argc, char** argv)
 	// Initialize FreeGLUT.
 	glutInit(&argc, argv);
 
-	// Create a FreeGLUT window. For this example, the window will be completely empty since
-	//  we only render to the VR headset.
+	// Create a FreeGLUT window.
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);
 	glutInitWindowSize(800, 600);
-	const int window = glutCreateWindow("OpenXR Demo");
+	const int window = glutCreateWindow("XrBridge Demo");
 
 	// This is the callback that gets called when the window needs to be re-rendered.
 	// For this example, we don't need it.
@@ -43,7 +42,8 @@ int main(int argc, char** argv)
 	// Initialize GLEW.
 	if (glewInit() != GLEW_OK)
 	{
-		throw "[ERROR] Failed to initialize GLEW.";
+		std::cerr << "[ERROR] Failed to initialize GLEW." << std::endl;
+		return 1;
 	}
 
 	// Enable depth for OpenGL.
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
 	//  really that important. You can put whatever.
 	if (xrbridge.init("XrBridge Demo") == false)
 	{
-		std::cerr << "[ERROR] Failed to initialize XrBridge!" << std::endl;
+		std::cerr << "[ERROR] Failed to initialize XrBridge." << std::endl;
 		return 1;
 	}
 
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
 		// Update XrBridge. This should be called once per frame.
 		if (xrbridge.update() == false)
 		{
-			std::cerr << "[ERROR] Failed to update XrBridge!" << std::endl;
+			std::cerr << "[ERROR] Failed to update XrBridge." << std::endl;
 			return 1;
 		}
 
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 
 		if (did_render == false)
 		{
-			std::cerr << "[ERROR] Failed to render!" << std::endl;
+			std::cerr << "[ERROR] Failed to render." << std::endl;
 			return 1;
 		}
 
@@ -122,7 +122,11 @@ int main(int argc, char** argv)
 
 	// Free up resources and destroy the OpenXR instance.
 	// This must be called BEFORE destroying the OpenGL context!
-	xrbridge.free();
+	if (xrbridge.free() == false)
+	{
+		std::cerr << "[ERROR] Failed to free XrBridge resources." << std::endl;
+		return 1;
+	}
 
 	// Free up resources and destroy the OpenGL context.
 	glutDestroyWindow(window);
