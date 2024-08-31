@@ -18,6 +18,12 @@
 
 #include <iostream>
 
+#ifdef _WIN32
+	#define XRBRIDGE_PLATFORM_WINDOWS
+#else
+	#define XRBRIDGE_PLATFORM_X11
+#endif
+
 // Platform-specific includes
 #ifdef XRBRIDGE_PLATFORM_WINDOWS
 	#include <Windows.h> // This MUST be included BEFORE FreeGLUT or the gods will not be happy.

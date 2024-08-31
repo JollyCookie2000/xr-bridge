@@ -54,7 +54,7 @@
    #define APP_WINDOWSIZEY   512
    
    // Additional log:
-   #define APP_VERBOSE
+   // #define APP_VERBOSE
 
 
 
