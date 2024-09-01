@@ -1,3 +1,5 @@
+// Author: Lorenzo Adam Piazza
+
 /* ========== CONFIGURATION ========== */
 
 // The format to be used to generate the FBOs.

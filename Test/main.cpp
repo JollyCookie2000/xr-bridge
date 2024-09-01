@@ -1,3 +1,5 @@
+// Author: Lorenzo Adam Piazza
+
 #include <memory>
 
 #include <GL/glew.h>

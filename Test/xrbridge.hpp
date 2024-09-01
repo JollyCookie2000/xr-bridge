@@ -1,3 +1,5 @@
+// Author: Lorenzo Adam Piazza
+
 #pragma once
 
 /*

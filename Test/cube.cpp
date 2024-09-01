@@ -1,3 +1,5 @@
+// Author: Lorenzo Adam Piazza
+
 #include "cube.hpp"
 
 #include <string>
