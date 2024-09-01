@@ -22,8 +22,6 @@
    #include <glm/gtc/packing.hpp>
 
    // OpenVR:
-   //#include <openvr.h>
-   // NOTE: On Linux, use the following include instead:
    #include <openvr/openvr.h>
 
    // C/C++:
