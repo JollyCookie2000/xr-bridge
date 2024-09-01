@@ -21,7 +21,7 @@
 					<Add library="GLEW" />
 					<Add library="GL" />
 					<Add library="glut" />
-					<Add library="openxr_loader" />
+					<Add library="openvr_api" />
 					<Add directory="../deps/freeglut-patched/lib" />
 				</Linker>
 			</Target>
@@ -40,7 +40,7 @@
 					<Add library="GLEW" />
 					<Add library="GL" />
 					<Add library="glut" />
-					<Add library="openxr_loader" />
+					<Add library="openvr_api" />
 					<Add directory="../deps/freeglut-patched/lib" />
 				</Linker>
 			</Target>
@@ -53,8 +53,7 @@
 		<Unit filename="fbo.cpp" />
 		<Unit filename="fbo.h" />
 		<Unit filename="main.cpp" />
-		<Unit filename="xrbridge.cpp" />
-		<Unit filename="xrbridge.hpp" />
+		<Unit filename="ovr.h" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>

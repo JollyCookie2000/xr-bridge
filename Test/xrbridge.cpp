@@ -613,7 +613,6 @@ bool XrBridge::render(const render_function_t render_function)
 			// As specified by the OpenXR specification, the left eye has an index of 0 and the right eye an index of 1.
 			// https://registry.khronos.org/OpenXR/specs/1.1/man/html/XrViewConfigurationType.html
 			const Eye eye = view_index == 0 ? Eye::LEFT : Eye::RIGHT;
-			const float aspect_ratio = static_cast<float>(current_swapchain.width) / static_cast<float>(current_swapchain.height);
 
 			// Create the projection matrix
 			const glm::mat4 projection_matrix = create_projection_matrix(

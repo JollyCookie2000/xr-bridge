@@ -13,7 +13,6 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
-					<Add option="-DXRBRIDGE_PLATFORM_X11" />
 					<Add option="-DXRBRIDGE_DEBUG" />
 					<Add directory="../deps/freeglut-patched/include" />
 				</Compiler>
@@ -32,7 +31,6 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-O2" />
-					<Add option="-DXRBRIDGE_PLATFORM_X11" />
 					<Add directory="../deps/freeglut-patched/include" />
 				</Compiler>
 				<Linker>
